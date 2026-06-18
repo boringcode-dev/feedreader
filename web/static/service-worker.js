@@ -1,13 +1,13 @@
-const CACHE_NAME = 'reader-v10';
+const CACHE_NAME = 'reader-v12';
 const CORE_ASSETS = [
   '/',
-  '/static/style.css?v=18',
-  '/static/app.js?v=15',
-  '/favicon.svg?v=7',
-  '/site.webmanifest?v=7',
-  '/apple-touch-icon.png?v=7',
-  '/icon-192.png?v=7',
-  '/icon-512.png?v=7'
+  '/static/style.css?v=20',
+  '/static/app.js?v=16',
+  '/favicon.svg?v=8',
+  '/site.webmanifest?v=8',
+  '/apple-touch-icon.png?v=8',
+  '/icon-192.png?v=8',
+  '/icon-512.png?v=8'
 ];
 
 self.addEventListener('install', (event) => {

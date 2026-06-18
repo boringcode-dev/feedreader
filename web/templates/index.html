@@ -11,12 +11,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="reader" />
-    <link rel="manifest" href="/site.webmanifest?v=7" />
-    <link rel="icon" href="/favicon.svg?v=7" sizes="any" type="image/svg+xml" />
-    <link rel="shortcut icon" href="/favicon.svg?v=7" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=7" />
-    <link rel="stylesheet" href="/static/style.css?v=18" />
-    <script src="/static/app.js?v=15" defer></script>
+    <link rel="manifest" href="/site.webmanifest?v=8" />
+    <link rel="icon" href="/favicon.svg?v=8" sizes="any" type="image/svg+xml" />
+    <link rel="shortcut icon" href="/favicon.svg?v=8" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=8" />
+    <link rel="stylesheet" href="/static/style.css?v=20" />
+    <script src="/static/app.js?v=16" defer></script>
   </head>
   <body>
     <header class="shell page-header">
@@ -154,7 +154,7 @@
         <button class="view-more" type="button" data-view-more{{if not .HasNext}} hidden{{end}}>View more</button>
       </div>
       <footer class="site-footer">
-        <p>© {{.CurrentYear}} feedreader · by Phat Pham</p>
+        <p><span class="footer-copyright">© {{.CurrentYear}}</span><span class="footer-sep">·</span><a class="footer-link" href="https://github.com/boringcode-dev/feedreader" target="_blank" rel="noreferrer"><img class="footer-github-mark" src="/static/source-icons/github.svg" alt="" aria-hidden="true" /><span>GitHub</span></a></p>
       </footer>
       {{else}}
       <div class="empty-state">{{.EmptyMessage}}</div>

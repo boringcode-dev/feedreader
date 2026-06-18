@@ -540,10 +540,42 @@ button {
 
 .site-footer p {
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
   color: var(--muted);
   font-size: 0.78rem;
   line-height: 1.4;
   text-align: center;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.footer-sep {
+  display: inline-flex;
+  align-items: center;
+}
+
+.footer-link:hover {
+  color: var(--text);
+}
+
+.footer-github-mark {
+  width: 0.95rem;
+  height: 0.95rem;
+  display: inline-block;
+  align-self: center;
+  vertical-align: middle;
+  border-radius: 0.2rem;
 }
 
 .view-more {
