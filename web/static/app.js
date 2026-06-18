@@ -1,7 +1,6 @@
 (() => {
   const root = document.documentElement;
   const availableSources = ['hackernews', 'github', 'huggingface', 'alphaxiv'];
-  const legacyDefaultSources = ['hackernews', 'github', 'huggingface'];
   const sourceLabels = {
     all: 'All enabled sources',
     hackernews: 'Hacker News',
@@ -72,9 +71,6 @@
     try {
       const parsed = JSON.parse(localStorage.getItem(sourceConfigStorageKey) || 'null');
       const normalized = normalizeSelectedSources(parsed);
-      if (normalized.length === legacyDefaultSources.length && legacyDefaultSources.every((source, index) => normalized[index] === source)) {
-        return [...availableSources];
-      }
       return normalized.length > 0 ? normalized : [...availableSources];
     } catch {
       return [...availableSources];

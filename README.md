@@ -262,7 +262,6 @@ Presentation-layer note:
 
 - the configure button opens a dialog that lets the user choose visible sources
 - selected sources are stored in `localStorage` under `feedreader.sources`
-- legacy browsers that previously stored the original 3-source full set are migrated once to include `alphaxiv`
 - source-specific filters render as **real icon-only buttons**
 - `All` remains a text button
 - the source dialog renders **real source icons** before each source name

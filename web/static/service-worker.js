@@ -1,8 +1,8 @@
-const CACHE_NAME = 'reader-v14';
+const CACHE_NAME = 'reader-v15';
 const CORE_ASSETS = [
   '/',
   '/static/style.css?v=21',
-  '/static/app.js?v=17',
+  '/static/app.js?v=18',
   '/favicon.svg?v=8',
   '/site.webmanifest?v=8',
   '/apple-touch-icon.png?v=8',
