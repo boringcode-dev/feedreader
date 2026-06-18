@@ -15,8 +15,8 @@
     <link rel="icon" href="/favicon.svg?v=6" sizes="any" type="image/svg+xml" />
     <link rel="shortcut icon" href="/favicon.svg?v=6" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=6" />
-    <link rel="stylesheet" href="/static/style.css?v=7" />
-    <script src="/static/app.js?v=7" defer></script>
+    <link rel="stylesheet" href="/static/style.css?v=9" />
+    <script src="/static/app.js?v=10" defer></script>
   </head>
   <body>
     <header class="shell page-header">
@@ -40,11 +40,30 @@
           </button>
         </div>
       </div>
-      <nav class="segmented" aria-label="Source filters">
-        {{range .SourceFilters}}
-        <button class="filter-button{{if .Active}} is-active{{end}}" type="button" data-filter="{{.Key}}">{{.Label}}</button>
-        {{end}}
-      </nav>
+      <div class="controls-row{{if .SearchOpen}} is-search-active{{end}}" data-controls-row>
+        <nav class="segmented" data-filter-nav aria-label="Source filters">
+          {{range .SourceFilters}}
+          <button class="filter-button{{if .Active}} is-active{{end}}" type="button" data-filter="{{.Key}}">{{.Label}}</button>
+          {{end}}
+        </nav>
+        <div class="search-cluster">
+          <form class="search-form{{if .SearchOpen}} is-open{{end}}" data-search-form role="search" method="get" action="/">
+            <label class="sr-only" for="feedreader-search">Search feed</label>
+            <input type="hidden" name="source" value="{{if ne .CurrentSource "all"}}{{.CurrentSource}}{{end}}" data-search-source />
+            <input id="feedreader-search" class="search-input" type="search" name="q" value="{{.SearchQuery}}" placeholder="Search title, summary, author, host" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search" data-search-input />
+          </form>
+          <button class="icon-button search-toggle{{if .SearchOpen}} is-active{{end}}" type="button" data-search-toggle aria-label="{{if .SearchOpen}}Close search{{else}}Search feed{{end}}" aria-expanded="{{if .SearchOpen}}true{{else}}false{{end}}" title="{{if .SearchOpen}}Close search{{else}}Search feed{{end}}">
+            <svg class="theme-icon search-icon-search" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/>
+              <path d="M16 16l4 4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/>
+            </svg>
+            <svg class="theme-icon search-icon-close" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 6l12 12" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/>
+              <path d="M18 6L6 18" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/>
+            </svg>
+          </button>
+        </div>
+      </div>
     </header>
 
     {{if .Errors}}
@@ -79,7 +98,7 @@
         <p>© {{.CurrentYear}} feedreader · by Phat Pham</p>
       </footer>
       {{else}}
-      <div class="empty-state">No items yet. The scheduler will populate the feed automatically.</div>
+      <div class="empty-state">{{.EmptyMessage}}</div>
       {{end}}
     </main>
   </body>

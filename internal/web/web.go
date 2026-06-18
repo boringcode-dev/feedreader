@@ -31,6 +31,9 @@ type pageData struct {
 	Errors        []domain.ErrorView
 	SourceFilters []sourceFilter
 	CurrentSource string
+	SearchQuery   string
+	SearchOpen    bool
+	EmptyMessage  string
 	PageSize      int
 	HasNext       bool
 	CurrentYear   int
@@ -81,11 +84,12 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	source := normalizeSource(r.URL.Query().Get("source"))
+	searchQuery := normalizeSearchQuery(r.URL.Query().Get("q"))
 	querySource := source
 	if querySource == "all" {
 		querySource = ""
 	}
-	items, hasNext, err := a.service.FeedItems(pageSize, 0, querySource)
+	items, hasNext, err := a.service.FeedItems(pageSize, 0, querySource, searchQuery)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -100,6 +104,9 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 		Errors:        service.BuildErrors(snapshots),
 		SourceFilters: buildSourceFilters(source),
 		CurrentSource: source,
+		SearchQuery:   searchQuery,
+		SearchOpen:    searchQuery != "",
+		EmptyMessage:  buildEmptyMessage(searchQuery),
 		PageSize:      pageSize,
 		HasNext:       hasNext,
 		CurrentYear:   time.Now().UTC().Year(),
@@ -122,6 +129,7 @@ func (a *App) healthz(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) itemsAPI(w http.ResponseWriter, r *http.Request) {
 	source := normalizeSource(r.URL.Query().Get("source"))
+	searchQuery := normalizeSearchQuery(r.URL.Query().Get("q"))
 	limit := parsePositiveInt(r.URL.Query().Get("limit"), pageSize)
 	if limit > 100 {
 		limit = 100
@@ -131,7 +139,7 @@ func (a *App) itemsAPI(w http.ResponseWriter, r *http.Request) {
 	if querySource == "all" {
 		querySource = ""
 	}
-	items, hasNext, err := a.service.FeedItems(limit, offset, querySource)
+	items, hasNext, err := a.service.FeedItems(limit, offset, querySource, searchQuery)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -151,6 +159,7 @@ func (a *App) itemsAPI(w http.ResponseWriter, r *http.Request) {
 	payload := map[string]any{
 		"generated_at": time.Now().UTC().Format(time.RFC3339Nano),
 		"source":       source,
+		"query":        searchQuery,
 		"offset":       offset,
 		"limit":        limit,
 		"has_next":     hasNext,
@@ -216,6 +225,17 @@ func normalizeSource(raw string) string {
 	default:
 		return "all"
 	}
+}
+
+func normalizeSearchQuery(raw string) string {
+	return strings.Join(strings.Fields(strings.TrimSpace(raw)), " ")
+}
+
+func buildEmptyMessage(searchQuery string) string {
+	if searchQuery != "" {
+		return "No matches found. Try a different query."
+	}
+	return "No items yet. The scheduler will populate the feed automatically."
 }
 
 func parsePositiveInt(raw string, fallback int) int {

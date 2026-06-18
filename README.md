@@ -31,7 +31,7 @@
   - Hugging Face Papers Trending
 - **Persistent local storage** with SQLite
 - **Incremental fetch model** that keeps older items in the database
-- **Server-backed incremental loading**: first page loads 12 items, filters trigger fresh queries, and `View more` appends more items in place
+- **Server-backed incremental loading**: first page loads 12 items, filters and search trigger fresh queries, and `View more` appends more items in place
 - **Scheduled refresh** every 3 hours on wall-clock boundaries in UTC+7
 - **Manual refresh** from the UI
 - **Responsive, minimalist UI** with source filters and dark/light mode
@@ -191,8 +191,9 @@ Returns feed items for incremental loading.
 
 Query params:
 - `source` — optional source filter (`hackernews`, `github`, `huggingface`)
-- `offset` — number of items already loaded
-- `limit` — batch size for the next fetch
+- `q` — optional case-insensitive search query across title, summary, author, URL host/path, and stored metadata
+- `limit` — page size
+- `offset` — pagination offset
 
 
 ---

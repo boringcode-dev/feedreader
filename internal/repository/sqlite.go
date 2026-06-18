@@ -140,15 +140,32 @@ func (r *SQLiteRepository) GetCurrentItems(source string, limit int) ([]domain.F
 	return items, rows.Err()
 }
 
-func (r *SQLiteRepository) ListFeedItems(limit int, offset int, source string) ([]domain.FeedItem, error) {
+func (r *SQLiteRepository) ListFeedItems(limit int, offset int, source string, searchQuery string) ([]domain.FeedItem, error) {
 	query := `
 		SELECT source, external_id, title, url, summary, author, score, comments_url, published_at, source_rank, metadata_json
 		FROM items
 	`
 	args := []any{}
+	conditions := make([]string, 0, 1+len(searchTerms(searchQuery)))
 	if strings.TrimSpace(source) != "" {
-		query += ` WHERE source = ?`
+		conditions = append(conditions, `source = ?`)
 		args = append(args, source)
+	}
+	for _, term := range searchTerms(searchQuery) {
+		conditions = append(conditions, `(
+			lower(title) LIKE ? ESCAPE '\'
+			OR lower(coalesce(summary, '')) LIKE ? ESCAPE '\'
+			OR lower(coalesce(author, '')) LIKE ? ESCAPE '\'
+			OR lower(url) LIKE ? ESCAPE '\'
+			OR lower(coalesce(metadata_json, '')) LIKE ? ESCAPE '\'
+		)`)
+		pattern := likePattern(term)
+		for range 5 {
+			args = append(args, pattern)
+		}
+	}
+	if len(conditions) > 0 {
+		query += ` WHERE ` + strings.Join(conditions, ` AND `)
 	}
 	query += ` ORDER BY (published_at IS NULL) ASC, published_at DESC, updated_at DESC, first_seen_at DESC`
 	if limit > 0 {
@@ -260,6 +277,26 @@ func deref(value *string) any {
 		return nil
 	}
 	return *value
+}
+
+func searchTerms(raw string) []string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return nil
+	}
+	terms := strings.Fields(strings.ToLower(trimmed))
+	filtered := make([]string, 0, len(terms))
+	for _, term := range terms {
+		if term != "" {
+			filtered = append(filtered, term)
+		}
+	}
+	return filtered
+}
+
+func likePattern(term string) string {
+	replacer := strings.NewReplacer(`\\`, `\\\\`, `%`, `\\%`, `_`, `\\_`)
+	return "%" + replacer.Replace(term) + "%"
 }
 
 func truncate(value string, limit int) string {
