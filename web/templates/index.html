@@ -15,8 +15,8 @@
     <link rel="icon" href="/favicon.svg?v=8" sizes="any" type="image/svg+xml" />
     <link rel="shortcut icon" href="/favicon.svg?v=8" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=8" />
-    <link rel="stylesheet" href="/static/style.css?v=24" />
-    <script src="/static/app.js?v=21" defer></script>
+    <link rel="stylesheet" href="/static/style.css?v=26" />
+    <script src="/static/app.js?v=23" defer></script>
   </head>
   <body>
     <header class="shell page-header">
@@ -137,8 +137,7 @@
     {{end}}
 
     <main class="shell page-body">
-      {{if .Cards}}
-      <section class="cards-grid" data-card-grid data-current-source="{{.CurrentSource}}" data-page-size="{{.PageSize}}" data-has-next="{{if .HasNext}}true{{else}}false{{end}}">
+      <section class="cards-grid{{if not .Cards}} is-hidden{{end}}" data-card-grid data-current-source="{{.CurrentSource}}" data-page-size="{{.PageSize}}" data-has-next="{{if .HasNext}}true{{else}}false{{end}}" aria-busy="false">
         {{range .Cards}}
         <article class="item-card" data-source="{{.Source}}">
           <h2 class="item-title">
@@ -155,15 +154,14 @@
         {{end}}
       </section>
 
-      <div class="footer-actions">
-        <button class="view-more" type="button" data-view-more{{if not .HasNext}} hidden{{end}}>View more</button>
+      <div class="empty-state{{if .Cards}} is-hidden{{end}}" data-empty-state>{{.EmptyMessage}}</div>
+
+      <div class="footer-actions{{if not .Cards}} is-hidden{{end}}" data-footer-actions>
+        <button class="view-more" type="button" data-view-more{{if or (not .Cards) (not .HasNext)}} hidden{{end}}>View more</button>
       </div>
       <footer class="site-footer">
         <p><span class="footer-copyright">© {{.CurrentYear}}</span><span class="footer-sep">·</span><a class="footer-link" href="https://github.com/boringcode-dev/feedreader" target="_blank" rel="noreferrer"><img class="footer-github-mark" src="/static/source-icons/github.svg" alt="" aria-hidden="true" /><span>GitHub</span></a></p>
       </footer>
-      {{else}}
-      <div class="empty-state">{{.EmptyMessage}}</div>
-      {{end}}
     </main>
   </body>
 </html>

@@ -32,7 +32,7 @@
   - alphaXiv Explore
 - **Persistent local storage** with SQLite
 - **Incremental fetch model** that keeps older items in the database
-- **Server-backed incremental loading**: first page loads 12 items, filters and search trigger fresh queries, and `View more` appends more items in place
+- **Server-backed incremental loading**: first page loads 12 items, first-load bootstrap/filter/search/refresh show a toast-based loading state, and `View more` appends more items in place
 - **Source-aware card summaries**
   - Hacker News cards show **points** and **comments**
   - GitHub cards show **stars**, **today's stars**, and **forks**
@@ -51,8 +51,9 @@
   - when 2+ sources are enabled, `All` stays visible and aggregates over the enabled set
   - when exactly 1 source is enabled, only that source button is shown
 - **Debounced client-side search UX** backed by the server API
+- **Explicit empty states** for no-result source filters and searches
 - **Scheduled refresh** every 3 hours on wall-clock boundaries in UTC+7
-- **Manual refresh** from the UI updates the current feed list in place without a full page reload
+- **Manual refresh** from the UI updates the current feed list in place without a full page reload and shows a toast-based loading state while refresh + refetch are running
 - **Persisted visited-link dimming** for feed card titles across reload/reopen using local storage
 - **PWA-ready assets** including manifest, service worker, and touch icons
 - **Docker deployment** with reverse-proxy-friendly HTTP service
@@ -259,6 +260,12 @@ Presentation-layer note:
 - the input renders at `16px` to avoid common iOS Safari auto-zoom behavior
 - typing is debounced before hitting the API
 - closing the search control clears the query and resets the feed
+
+### Loading and empty states
+
+- first-load bootstrap queries, source filter changes, searches, `View more`, and manual refresh all show an explicit toast-based loading state
+- source-filter and search requests that return zero items replace the list with an empty-state message instead of leaving stale cards on screen
+- `View more` disables itself while an append request is in flight and hides itself when the current result set has no further page
 
 ### Source configuration
 

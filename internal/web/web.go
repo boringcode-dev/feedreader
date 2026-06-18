@@ -107,7 +107,7 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 		CurrentSource: source,
 		SearchQuery:   searchQuery,
 		SearchOpen:    searchQuery != "",
-		EmptyMessage:  buildEmptyMessage(searchQuery),
+		EmptyMessage:  buildEmptyMessage(source, searchQuery),
 		PageSize:      pageSize,
 		HasNext:       hasNext,
 		CurrentYear:   time.Now().UTC().Year(),
@@ -261,11 +261,32 @@ func normalizeSearchQuery(raw string) string {
 	return strings.Join(strings.Fields(strings.TrimSpace(raw)), " ")
 }
 
-func buildEmptyMessage(searchQuery string) string {
+func buildEmptyMessage(source, searchQuery string) string {
 	if searchQuery != "" {
+		if source != "" && source != "all" {
+			return "No matches found in " + sourceLabel(source) + ". Try a different query."
+		}
 		return "No matches found. Try a different query."
 	}
+	if source != "" && source != "all" {
+		return "No items found in " + sourceLabel(source) + " right now."
+	}
 	return "No items yet. The scheduler will populate the feed automatically."
+}
+
+func sourceLabel(source string) string {
+	switch source {
+	case "hackernews":
+		return "Hacker News"
+	case "github":
+		return "GitHub Trending"
+	case "huggingface":
+		return "Hugging Face Papers Trending"
+	case "alphaxiv":
+		return "alphaXiv"
+	default:
+		return "this source"
+	}
 }
 
 func parsePositiveInt(raw string, fallback int) int {

@@ -22,6 +22,8 @@
   const configSaveButton = document.querySelector('[data-source-config-save]');
   const configOptions = Array.from(document.querySelectorAll('[data-source-option]'));
   const cardsGrid = document.querySelector('[data-card-grid]');
+  const emptyState = document.querySelector('[data-empty-state]');
+  const footerActions = document.querySelector('[data-footer-actions]');
   const viewMoreButton = document.querySelector('[data-view-more]');
   const searchToggle = document.querySelector('[data-search-toggle]');
   const searchForm = document.querySelector('[data-search-form]');
@@ -48,6 +50,22 @@
   let searchTimer = null;
   let requestSequence = 0;
   let refreshInFlight = false;
+  let feedLoading = false;
+  let feedLoadingMode = '';
+  let activeToastKind = '';
+
+  function emptyMessageForState({ source, query }) {
+    if (query) {
+      if (source && source !== 'all') {
+        return `No matches found in ${sourceLabels[source] || 'this source'}. Try a different query.`;
+      }
+      return 'No matches found. Try a different query.';
+    }
+    if (source && source !== 'all') {
+      return `No items found in ${sourceLabels[source] || 'this source'} right now.`;
+    }
+    return 'No items yet. The scheduler will populate the feed automatically.';
+  }
 
   const cardTemplate = (item) => `
     <article class="item-card" data-source="${escapeHtml(item.source || '')}">
@@ -155,7 +173,7 @@
         return `<button class="filter-button${isActive ? ' is-active' : ''}" type="button" data-filter="${key}" aria-pressed="${String(isActive)}" aria-label="${escapeAttr(sourceLabels[key] || key)}" title="${escapeAttr(sourceLabels[key] || key)}">All</button>`;
       }
       return `<button class="filter-button filter-button--icon${isActive ? ' is-active' : ''}" type="button" data-filter="${key}" aria-pressed="${String(isActive)}" aria-label="${escapeAttr(sourceLabels[key] || key)}" title="${escapeAttr(sourceLabels[key] || key)}"><img class="source-icon-image source-icon-image--filter source-icon-image--${escapeAttr(key)}" src="${escapeAttr(sourceIconPaths[key] || '')}" alt="" aria-hidden="true" /></button>`;
-    }).join(''); // source keys/icon paths are fixed local constants, not user content
+    }).join(''); // Fixed local source definitions only; all interpolated values are escaped above.
   }
 
   function syncConfigOptions() {
@@ -176,9 +194,41 @@
   }
 
   const renderViewMore = () => {
+    const showActions = loadedCount > 0;
+    if (footerActions) {
+      footerActions.classList.toggle('is-hidden', !showActions);
+    }
     if (!viewMoreButton) return;
-    viewMoreButton.hidden = !hasNext;
-    viewMoreButton.disabled = !hasNext || refreshInFlight;
+    const showButton = hasNext && loadedCount > 0;
+    const loadingMore = feedLoading && feedLoadingMode === 'append';
+    viewMoreButton.hidden = !showButton;
+    viewMoreButton.disabled = !showButton || refreshInFlight || feedLoading;
+    viewMoreButton.textContent = loadingMore ? 'Loading…' : 'View more';
+  };
+
+  const renderFeedBody = () => {
+    if (cardsGrid) {
+      const showCards = loadedCount > 0;
+      cardsGrid.classList.toggle('is-hidden', !showCards);
+      cardsGrid.classList.toggle('is-loading', feedLoading && feedLoadingMode !== 'append' && showCards);
+      cardsGrid.setAttribute('aria-busy', String(feedLoading));
+    }
+    if (emptyState) {
+      emptyState.textContent = emptyMessageForState({ source: activeFilter, query: activeQuery });
+      emptyState.classList.toggle('is-hidden', feedLoading || loadedCount > 0);
+    }
+    renderViewMore();
+  };
+
+  const setFeedLoading = (active, { mode = 'replace', message = '' } = {}) => {
+    feedLoading = active;
+    feedLoadingMode = active ? mode : '';
+    if (active) {
+      showToast(message, 'loading', { persistent: true });
+    } else {
+      hideToast({ onlyKind: 'loading' });
+    }
+    renderFeedBody();
   };
 
   const renderSearch = () => {
@@ -217,16 +267,36 @@
   };
 
   let toastTimer = null;
-  const showToast = (message, kind = 'success') => {
+  const hideToast = ({ onlyKind } = {}) => {
     if (!toast) return;
-    toast.textContent = message;
-    toast.classList.toggle('is-error', kind === 'error');
-    toast.classList.add('is-visible');
+    if (onlyKind && activeToastKind !== onlyKind) {
+      return;
+    }
     if (toastTimer) {
       window.clearTimeout(toastTimer);
+      toastTimer = null;
+    }
+    toast.classList.remove('is-visible', 'is-error', 'is-loading');
+    toast.textContent = '';
+    activeToastKind = '';
+  };
+
+  const showToast = (message, kind = 'success', { persistent = false } = {}) => {
+    if (!toast) return;
+    if (toastTimer) {
+      window.clearTimeout(toastTimer);
+      toastTimer = null;
+    }
+    toast.textContent = message;
+    toast.classList.toggle('is-error', kind === 'error');
+    toast.classList.toggle('is-loading', kind === 'loading');
+    toast.classList.add('is-visible');
+    activeToastKind = kind;
+    if (persistent) {
+      return;
     }
     toastTimer = window.setTimeout(() => {
-      toast.classList.remove('is-visible');
+      hideToast();
     }, 2200);
   };
 
@@ -248,8 +318,21 @@
     }
   };
 
-  const fetchItems = async ({ source, query, offset, append }) => {
+  const setRefreshButtonLoading = (active) => {
+    if (!refreshButton) return;
+    refreshButton.disabled = active;
+    refreshButton.classList.toggle('is-loading', active);
+    refreshButton.setAttribute('aria-label', active ? 'Refreshing feed' : 'Refresh feed');
+    refreshButton.setAttribute('title', active ? 'Refreshing feed' : 'Refresh feed');
+  };
+
+  const fetchItems = async ({ source, query, offset, append, loadingMessage }) => {
     const requestId = ++requestSequence;
+    setFeedLoading(true, {
+      mode: append ? 'append' : 'replace',
+      message: loadingMessage || (append ? 'Loading more items…' : 'Loading feed…'),
+    });
+
     const url = new URL('/api/items', window.location.origin);
     url.searchParams.set('limit', String(pageSize));
     url.searchParams.set('offset', String(offset));
@@ -261,29 +344,45 @@
     if (query) {
       url.searchParams.set('q', query);
     }
-    const response = await fetch(url.toString());
-    if (!response.ok) {
-      throw new Error(`fetch failed: ${response.status}`);
-    }
-    const payload = await response.json();
-    if (requestId !== requestSequence) {
-      return;
-    }
-    const items = payload.items || [];
-    hasNext = Boolean(payload.has_next);
-    cardsGrid.dataset.hasNext = hasNext ? 'true' : 'false';
-    cardsGrid.dataset.currentSource = source;
 
-    if (!append) {
-      cardsGrid.innerHTML = '';
-      loadedCount = 0;
-    }
+    try {
+      const response = await fetch(url.toString(), {
+        headers: { Accept: 'application/json' },
+      });
+      if (!response.ok) {
+        throw new Error(`fetch failed: ${response.status}`);
+      }
+      const payload = await response.json();
+      if (requestId !== requestSequence) {
+        return;
+      }
 
-    const html = items.map((item) => cardTemplate(item)).join('');
-    cardsGrid.insertAdjacentHTML('beforeend', html);
-    loadedCount += items.length;
-    applyVisitedLinkState();
-    renderViewMore();
+      const items = payload.items || [];
+      hasNext = Boolean(payload.has_next);
+      if (cardsGrid) {
+        cardsGrid.dataset.hasNext = hasNext ? 'true' : 'false';
+        cardsGrid.dataset.currentSource = source || 'all';
+      }
+
+      if (!append && cardsGrid) {
+        cardsGrid.innerHTML = '';
+        loadedCount = 0;
+      }
+
+      if (cardsGrid) {
+        const html = items.map((item) => cardTemplate(item)).join('');
+        if (html) {
+          cardsGrid.insertAdjacentHTML('beforeend', html); // HTML is built from escaped API fields plus fixed local icon paths.
+        }
+      }
+      loadedCount = append ? loadedCount + items.length : items.length;
+      applyVisitedLinkState();
+      renderFeedBody();
+    } finally {
+      if (requestId === requestSequence) {
+        setFeedLoading(false);
+      }
+    }
   };
 
   const cancelPendingSearch = () => {
@@ -295,14 +394,19 @@
 
   const currentSearchInputValue = () => (searchInput?.value || '').trim();
 
-  const applySearch = async (nextQuery, { collapseWhenEmpty = false } = {}) => {
+  const applySearch = async (nextQuery, { collapseWhenEmpty = false, loadingMessage } = {}) => {
     cancelPendingSearch();
     activeQuery = nextQuery;
     searchOpen = Boolean(nextQuery) || (searchOpen && !collapseWhenEmpty);
-    loadedCount = 0;
     renderSearch();
     updateURL();
-    await fetchItems({ source: activeFilter, query: activeQuery, offset: 0, append: false });
+    await fetchItems({
+      source: activeFilter,
+      query: activeQuery,
+      offset: 0,
+      append: false,
+      loadingMessage: loadingMessage || (nextQuery ? 'Searching feed…' : 'Loading feed…'),
+    });
   };
 
   const scheduleSearch = () => {
@@ -311,20 +415,19 @@
     cancelPendingSearch();
     searchTimer = window.setTimeout(async () => {
       try {
-        await applySearch(currentSearchInputValue());
+        await applySearch(currentSearchInputValue(), { loadingMessage: 'Searching feed…' });
       } catch (error) {
         showToast('Failed to search feed', 'error');
       }
     }, searchDebounceMs);
   };
 
-  async function refetchCurrentView() {
-    loadedCount = 0;
+  async function refetchCurrentView({ loadingMessage = 'Loading feed…' } = {}) {
     ensureActiveFilterIsVisible();
     renderFilters();
     renderSearch();
     updateURL();
-    await fetchItems({ source: activeFilter, query: activeQuery, offset: 0, append: false });
+    await fetchItems({ source: activeFilter, query: activeQuery, offset: 0, append: false, loadingMessage });
   }
 
   async function refreshFeedList() {
@@ -333,10 +436,9 @@
     }
     refreshInFlight = true;
     cancelPendingSearch();
-    renderViewMore();
-    if (refreshButton) {
-      refreshButton.disabled = true;
-    }
+    setFeedLoading(true, { mode: 'replace', message: 'Refreshing feed…' });
+    setRefreshButtonLoading(true);
+    renderFeedBody();
     try {
       const response = await fetch('/api/refresh', { method: 'POST' });
       const payload = await response.json().catch(() => ({}));
@@ -344,7 +446,7 @@
         showToast('Refresh completed with errors', 'error');
         return false;
       }
-      await refetchCurrentView();
+      await refetchCurrentView({ loadingMessage: 'Refreshing feed…' });
       showToast('Feed refreshed', 'success');
       return true;
     } catch (error) {
@@ -352,10 +454,9 @@
       return false;
     } finally {
       refreshInFlight = false;
-      if (refreshButton) {
-        refreshButton.disabled = false;
-      }
-      renderViewMore();
+      setFeedLoading(false);
+      setRefreshButtonLoading(false);
+      renderFeedBody();
     }
   }
 
@@ -388,7 +489,7 @@
     persistSelectedSources();
     syncConfigOptions();
     closeConfigDialog();
-    await refetchCurrentView();
+    await refetchCurrentView({ loadingMessage: 'Loading selected sources…' });
   }
 
   if (filterNav) {
@@ -401,12 +502,17 @@
       activeFilter = nextFilter;
       activeQuery = currentSearchInputValue();
       searchOpen = searchOpen || Boolean(activeQuery);
-      loadedCount = 0;
       renderFilters();
       renderSearch();
       updateURL();
       try {
-        await fetchItems({ source: activeFilter, query: activeQuery, offset: 0, append: false });
+        await fetchItems({
+          source: activeFilter,
+          query: activeQuery,
+          offset: 0,
+          append: false,
+          loadingMessage: activeFilter === 'all' ? 'Loading feed…' : `Loading ${sourceLabels[activeFilter] || 'source'}…`,
+        });
       } catch (error) {
         showToast('Failed to load feed', 'error');
       }
@@ -471,7 +577,7 @@
         searchInput.value = '';
       }
       try {
-        await applySearch('', { collapseWhenEmpty: true });
+        await applySearch('', { collapseWhenEmpty: true, loadingMessage: 'Loading feed…' });
       } catch (error) {
         showToast('Failed to clear search', 'error');
       }
@@ -482,7 +588,7 @@
     searchForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       try {
-        await applySearch(currentSearchInputValue());
+        await applySearch(currentSearchInputValue(), { loadingMessage: 'Searching feed…' });
       } catch (error) {
         showToast('Failed to search feed', 'error');
       }
@@ -501,7 +607,7 @@
         if (searchInput) {
           searchInput.value = '';
         }
-        applySearch('', { collapseWhenEmpty: true }).catch(() => {
+        applySearch('', { collapseWhenEmpty: true, loadingMessage: 'Loading feed…' }).catch(() => {
           showToast('Failed to clear search', 'error');
         });
         searchToggle?.focus();
@@ -511,13 +617,20 @@
 
   if (viewMoreButton) {
     viewMoreButton.addEventListener('click', async () => {
+      if (feedLoading || refreshInFlight) return;
       viewMoreButton.disabled = true;
       try {
-        await fetchItems({ source: activeFilter, query: activeQuery, offset: loadedCount, append: true });
+        await fetchItems({
+          source: activeFilter,
+          query: activeQuery,
+          offset: loadedCount,
+          append: true,
+          loadingMessage: 'Loading more items…',
+        });
       } catch (error) {
         showToast('Failed to load more items', 'error');
       } finally {
-        viewMoreButton.disabled = !hasNext || refreshInFlight;
+        renderFeedBody();
       }
     });
   }
@@ -559,10 +672,11 @@
   ensureActiveFilterIsVisible();
   renderFilters();
   renderSearch();
-  renderViewMore();
+  renderFeedBody();
+  setRefreshButtonLoading(false);
 
   if (shouldBootstrapRefetch) {
-    refetchCurrentView().catch(() => {
+    refetchCurrentView({ loadingMessage: 'Loading feed…' }).catch(() => {
       showToast('Failed to load configured sources', 'error');
     });
   }
