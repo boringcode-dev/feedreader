@@ -33,18 +33,21 @@
   const pageSize = Number(cardsGrid?.dataset.pageSize || 12);
   const searchDebounceMs = 1100;
   const sourceConfigStorageKey = 'feedreader.sources';
+  const visitedLinksStorageKey = 'feedreader.visited';
+  const visitedLinksLimit = 500;
   const themeStorageKey = 'feedreader.theme';
-  const refreshToastStorageKey = 'feedreader.toast';
   const metaThemeColor = document.querySelector('meta[name="theme-color"]');
 
   let activeFilter = cardsGrid?.dataset.currentSource || 'all';
   let selectedSources = loadSelectedSources();
+  let visitedLinks = loadVisitedLinks();
   let activeQuery = (searchInput?.value || '').trim();
   let searchOpen = Boolean(activeQuery);
   let loadedCount = cardsGrid ? cardsGrid.querySelectorAll('.item-card').length : 0;
   let hasNext = cardsGrid?.dataset.hasNext === 'true';
   let searchTimer = null;
   let requestSequence = 0;
+  let refreshInFlight = false;
 
   const cardTemplate = (item) => `
     <article class="item-card" data-source="${escapeHtml(item.source || '')}">
@@ -65,6 +68,57 @@
       seen.add(value);
       return true;
     });
+  }
+
+  function normalizeVisitedHref(rawValue) {
+    const value = String(rawValue || '').trim();
+    if (!value) return '';
+    try {
+      return new URL(value, window.location.origin).toString();
+    } catch {
+      return value;
+    }
+  }
+
+  function loadVisitedLinks() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(visitedLinksStorageKey) || 'null');
+      const values = Array.isArray(parsed) ? parsed : [];
+      const seen = new Set();
+      return values
+        .map((value) => normalizeVisitedHref(value))
+        .filter((value) => {
+          if (!value || seen.has(value)) return false;
+          seen.add(value);
+          return true;
+        })
+        .slice(-visitedLinksLimit);
+    } catch {
+      return [];
+    }
+  }
+
+  function persistVisitedLinks() {
+    localStorage.setItem(visitedLinksStorageKey, JSON.stringify(visitedLinks.slice(-visitedLinksLimit)));
+  }
+
+  function applyVisitedLinkState() {
+    if (!cardsGrid) return;
+    const visitedSet = new Set(visitedLinks);
+    cardsGrid.querySelectorAll('.item-title a').forEach((link) => {
+      const normalized = normalizeVisitedHref(link.href);
+      link.classList.toggle('is-visited', normalized !== '' && visitedSet.has(normalized));
+    });
+  }
+
+  function rememberVisitedLink(rawHref) {
+    const href = normalizeVisitedHref(rawHref);
+    if (!href) return;
+    const next = visitedLinks.filter((value) => value !== href);
+    next.push(href);
+    visitedLinks = next.slice(-visitedLinksLimit);
+    persistVisitedLinks();
+    applyVisitedLinkState();
   }
 
   function loadSelectedSources() {
@@ -124,7 +178,7 @@
   const renderViewMore = () => {
     if (!viewMoreButton) return;
     viewMoreButton.hidden = !hasNext;
-    viewMoreButton.disabled = !hasNext;
+    viewMoreButton.disabled = !hasNext || refreshInFlight;
   };
 
   const renderSearch = () => {
@@ -228,6 +282,7 @@
     const html = items.map((item) => cardTemplate(item)).join('');
     cardsGrid.insertAdjacentHTML('beforeend', html);
     loadedCount += items.length;
+    applyVisitedLinkState();
     renderViewMore();
   };
 
@@ -270,6 +325,38 @@
     renderSearch();
     updateURL();
     await fetchItems({ source: activeFilter, query: activeQuery, offset: 0, append: false });
+  }
+
+  async function refreshFeedList() {
+    if (refreshInFlight) {
+      return false;
+    }
+    refreshInFlight = true;
+    cancelPendingSearch();
+    renderViewMore();
+    if (refreshButton) {
+      refreshButton.disabled = true;
+    }
+    try {
+      const response = await fetch('/api/refresh', { method: 'POST' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.ok) {
+        showToast('Refresh completed with errors', 'error');
+        return false;
+      }
+      await refetchCurrentView();
+      showToast('Feed refreshed', 'success');
+      return true;
+    } catch (error) {
+      showToast('Refresh failed', 'error');
+      return false;
+    } finally {
+      refreshInFlight = false;
+      if (refreshButton) {
+        refreshButton.disabled = false;
+      }
+      renderViewMore();
+    }
   }
 
   function openConfigDialog() {
@@ -430,28 +517,22 @@
       } catch (error) {
         showToast('Failed to load more items', 'error');
       } finally {
-        viewMoreButton.disabled = !hasNext;
+        viewMoreButton.disabled = !hasNext || refreshInFlight;
       }
+    });
+  }
+
+  if (cardsGrid) {
+    cardsGrid.addEventListener('click', (event) => {
+      const link = event.target.closest('.item-title a');
+      if (!link) return;
+      rememberVisitedLink(link.href);
     });
   }
 
   if (refreshButton) {
     refreshButton.addEventListener('click', async () => {
-      refreshButton.disabled = true;
-      try {
-        const response = await fetch('/api/refresh', { method: 'POST' });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok || !payload.ok) {
-          showToast('Refresh completed with errors', 'error');
-          return;
-        }
-        sessionStorage.setItem(refreshToastStorageKey, 'Feed refreshed');
-        window.location.reload();
-      } catch (error) {
-        showToast('Refresh failed', 'error');
-      } finally {
-        refreshButton.disabled = false;
-      }
+      await refreshFeedList();
     });
   }
 
@@ -470,13 +551,8 @@
   const savedTheme = localStorage.getItem(themeStorageKey);
   applyTheme(savedTheme === 'light' ? 'light' : 'dark');
 
-  const pendingToast = sessionStorage.getItem(refreshToastStorageKey);
-  if (pendingToast) {
-    sessionStorage.removeItem(refreshToastStorageKey);
-    showToast(pendingToast, 'success');
-  }
-
   syncConfigOptions();
+  applyVisitedLinkState();
   const shouldBootstrapRefetch = activeFilter === 'all'
     ? selectedSources.length !== availableSources.length
     : !selectedSources.includes(activeFilter);

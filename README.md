@@ -52,7 +52,8 @@
   - when exactly 1 source is enabled, only that source button is shown
 - **Debounced client-side search UX** backed by the server API
 - **Scheduled refresh** every 3 hours on wall-clock boundaries in UTC+7
-- **Manual refresh** from the UI
+- **Manual refresh** from the UI updates the current feed list in place without a full page reload
+- **Persisted visited-link dimming** for feed card titles across reload/reopen using local storage
 - **PWA-ready assets** including manifest, service worker, and touch icons
 - **Docker deployment** with reverse-proxy-friendly HTTP service
 

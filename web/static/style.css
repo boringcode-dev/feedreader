@@ -500,6 +500,12 @@ button {
 .item-title a {
   color: var(--text);
   text-decoration: none;
+  transition: color 140ms ease;
+}
+
+.item-title a:visited,
+.item-title a.is-visited {
+  color: var(--muted);
 }
 
 .item-brief {
