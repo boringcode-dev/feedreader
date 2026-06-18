@@ -107,7 +107,8 @@ Key properties:
 
 - old items are retained in the database
 - fetch failures do not wipe existing data
-- sources without a native article date fall back to fetch/update time for ordering
+- sources without a native article date fall back to the initial fetch time (`first_seen_at`) for ordering
+- later refreshes preserve the original published/fetched ordering timestamps for existing items
 
 ---
 

@@ -41,6 +41,8 @@ CREATE INDEX IF NOT EXISTS idx_items_source_last_seen_rank
     ON items(source, last_seen_at DESC, source_rank ASC);
 CREATE INDEX IF NOT EXISTS idx_items_last_seen
     ON items(last_seen_at DESC);
+CREATE INDEX IF NOT EXISTS idx_items_feed_order
+    ON items(coalesce(published_at, first_seen_at) DESC, first_seen_at DESC, source_rank ASC, source ASC, external_id ASC);
 `
 
 func Open(path string) (*sql.DB, error) {
@@ -57,6 +59,7 @@ func Open(path string) (*sql.DB, error) {
 		"PRAGMA journal_mode=WAL;",
 		"PRAGMA synchronous=NORMAL;",
 		"PRAGMA busy_timeout=5000;",
+		"PRAGMA temp_store=MEMORY;",
 	}
 	for _, pragma := range pragmas {
 		if _, err := database.Exec(pragma); err != nil {

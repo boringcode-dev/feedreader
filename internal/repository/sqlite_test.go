@@ -122,3 +122,107 @@ func TestListFeedItemsSearchAndPagination(t *testing.T) {
 		t.Fatalf("unexpected multi-term results: %#v", multiTermItems)
 	}
 }
+
+func TestSaveSnapshotPreservesInitialDatesAndUsesFirstSeenFallbackOrdering(t *testing.T) {
+	database, err := dbpkg.Open(filepath.Join(t.TempDir(), "feedreader.db"))
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	repo := NewSQLiteRepository(database)
+	firstFetch := time.Date(2026, 6, 18, 10, 0, 0, 0, time.UTC)
+	secondFetch := time.Date(2026, 6, 18, 11, 0, 0, 0, time.UTC)
+	thirdFetch := time.Date(2026, 6, 18, 12, 0, 0, 0, time.UTC)
+	publishedOriginal := time.Date(2026, 6, 18, 9, 0, 0, 0, time.UTC)
+	publishedReplacement := time.Date(2026, 6, 18, 13, 0, 0, 0, time.UTC)
+
+	if err := repo.SaveSnapshot("github", firstFetch, []domain.FeedItem{{
+		Source:     "github",
+		ExternalID: "item-a",
+		Title:      "Item A",
+		URL:        "https://github.com/example/item-a",
+		SourceRank: 1,
+		Metadata:   map[string]any{},
+	}}); err != nil {
+		t.Fatalf("save item-a first snapshot: %v", err)
+	}
+
+	if err := repo.SaveSnapshot("github", secondFetch, []domain.FeedItem{{
+		Source:     "github",
+		ExternalID: "item-b",
+		Title:      "Item B",
+		URL:        "https://github.com/example/item-b",
+		SourceRank: 1,
+		Metadata:   map[string]any{},
+	}}); err != nil {
+		t.Fatalf("save item-b snapshot: %v", err)
+	}
+
+	updatedTitle := "Item A updated"
+	if err := repo.SaveSnapshot("github", thirdFetch, []domain.FeedItem{{
+		Source:     "github",
+		ExternalID: "item-a",
+		Title:      updatedTitle,
+		URL:        "https://github.com/example/item-a",
+		SourceRank: 1,
+		Metadata:   map[string]any{},
+	}}); err != nil {
+		t.Fatalf("save item-a second snapshot: %v", err)
+	}
+
+	if err := repo.SaveSnapshot("alphaxiv", firstFetch, []domain.FeedItem{{
+		Source:      "alphaxiv",
+		ExternalID:  "paper-1",
+		Title:       "Paper 1",
+		URL:         "https://www.alphaxiv.org/abs/paper-1",
+		PublishedAt: &publishedOriginal,
+		SourceRank:  1,
+		Metadata:    map[string]any{},
+	}}); err != nil {
+		t.Fatalf("save paper-1 first snapshot: %v", err)
+	}
+
+	if err := repo.SaveSnapshot("alphaxiv", thirdFetch, []domain.FeedItem{{
+		Source:      "alphaxiv",
+		ExternalID:  "paper-1",
+		Title:       "Paper 1 updated",
+		URL:         "https://www.alphaxiv.org/abs/paper-1",
+		PublishedAt: &publishedReplacement,
+		SourceRank:  1,
+		Metadata:    map[string]any{},
+	}}); err != nil {
+		t.Fatalf("save paper-1 second snapshot: %v", err)
+	}
+
+	items, err := repo.ListFeedItems(10, 0, "", []string{"github"}, "")
+	if err != nil {
+		t.Fatalf("list github items: %v", err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("expected 2 github items, got %d", len(items))
+	}
+	if items[0].ExternalID != "item-b" || items[1].ExternalID != "item-a" {
+		t.Fatalf("expected first-seen fallback ordering to keep newer item-b ahead of refreshed item-a, got %#v", []string{items[0].ExternalID, items[1].ExternalID})
+	}
+
+	var publishedAt, firstSeenAt, updatedAt string
+	if err := repo.db.QueryRow(
+		`SELECT published_at, first_seen_at, updated_at FROM items WHERE source = ? AND external_id = ?`,
+		"alphaxiv", "paper-1",
+	).Scan(&publishedAt, &firstSeenAt, &updatedAt); err != nil {
+		t.Fatalf("query preserved dates: %v", err)
+	}
+
+	wantPublished := publishedOriginal.UTC().Format(time.RFC3339Nano)
+	wantFetched := firstFetch.UTC().Format(time.RFC3339Nano)
+	if publishedAt != wantPublished {
+		t.Fatalf("expected published_at %s, got %s", wantPublished, publishedAt)
+	}
+	if firstSeenAt != wantFetched {
+		t.Fatalf("expected first_seen_at %s, got %s", wantFetched, firstSeenAt)
+	}
+	if updatedAt != wantFetched {
+		t.Fatalf("expected updated_at to preserve initial fetched timestamp %s, got %s", wantFetched, updatedAt)
+	}
+}

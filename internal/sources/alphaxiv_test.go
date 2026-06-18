@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 func TestParseAlphaXivExploreExtractsPaperFields(t *testing.T) {
@@ -120,5 +122,20 @@ func TestParseAlphaXivExploreSkipsCardsWithoutAbsLink(t *testing.T) {
 	}
 	if len(items) != 0 {
 		t.Fatalf("expected 0 items, got %d", len(items))
+	}
+}
+
+func TestAlphaXivPublishedAtNormalizesWhitespace(t *testing.T) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(`<div>14&nbsp;Jun&nbsp;2026</div>`))
+	if err != nil {
+		t.Fatalf("build document: %v", err)
+	}
+	publishedAt := alphaXivPublishedAt(doc.Selection)
+	if publishedAt == nil {
+		t.Fatal("expected publishedAt")
+	}
+	want := time.Date(2026, time.June, 14, 0, 0, 0, 0, time.UTC)
+	if !publishedAt.Equal(want) {
+		t.Fatalf("unexpected publishedAt: got %s want %s", publishedAt.Format(time.RFC3339), want.Format(time.RFC3339))
 	}
 }

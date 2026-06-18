@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -44,11 +45,11 @@ func (r *SQLiteRepository) SaveSnapshot(source string, fetchedAt time.Time, item
 				author = excluded.author,
 				score = excluded.score,
 				comments_url = excluded.comments_url,
-				published_at = excluded.published_at,
+				published_at = coalesce(items.published_at, excluded.published_at),
 				source_rank = excluded.source_rank,
 				metadata_json = excluded.metadata_json,
 				last_seen_at = excluded.last_seen_at,
-				updated_at = excluded.updated_at
+				updated_at = items.updated_at
 		`, item.Source, item.ExternalID, item.Title, item.URL, deref(item.Summary), deref(item.Author), intOrNil(item.Score), deref(item.CommentsURL), toISO(item.PublishedAt), item.SourceRank, string(metadataJSON), fetchedAtISO, fetchedAtISO, fetchedAtISO); err != nil {
 			return fmt.Errorf("upsert item %s/%s: %w", item.Source, item.ExternalID, err)
 		}
@@ -115,7 +116,7 @@ func (r *SQLiteRepository) ListSourceStates() (map[string]domain.SyncState, erro
 
 func (r *SQLiteRepository) GetCurrentItems(source string, limit int) ([]domain.FeedItem, error) {
 	rows, err := r.db.Query(`
-		SELECT source, external_id, title, url, summary, author, score, comments_url, published_at, source_rank, metadata_json
+		SELECT source, external_id, title, url, summary, author, score, comments_url, published_at, source_rank, metadata_json, first_seen_at
 		FROM items
 		WHERE source = ?
 		  AND last_seen_at = (
@@ -142,7 +143,7 @@ func (r *SQLiteRepository) GetCurrentItems(source string, limit int) ([]domain.F
 
 func (r *SQLiteRepository) ListFeedItems(limit int, offset int, source string, sources []string, searchQuery string) ([]domain.FeedItem, error) {
 	query := `
-		SELECT source, external_id, title, url, summary, author, score, comments_url, published_at, source_rank, metadata_json
+		SELECT source, external_id, title, url, summary, author, score, comments_url, published_at, source_rank, metadata_json, first_seen_at
 		FROM items
 	`
 	args := []any{}
@@ -174,30 +175,62 @@ func (r *SQLiteRepository) ListFeedItems(limit int, offset int, source string, s
 	if len(conditions) > 0 {
 		query += ` WHERE ` + strings.Join(conditions, ` AND `)
 	}
-	query += ` ORDER BY (published_at IS NULL) ASC, published_at DESC, updated_at DESC, first_seen_at DESC`
-	if limit > 0 {
-		query += ` LIMIT ?`
-		args = append(args, limit)
-	}
-	if offset > 0 {
-		query += ` OFFSET ?`
-		args = append(args, offset)
-	}
 	rows, err := r.db.Query(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query feed items: %w", err)
 	}
 	defer rows.Close()
 
-	items := []domain.FeedItem{}
+	type orderedFeedItem struct {
+		item        domain.FeedItem
+		firstSeenAt time.Time
+	}
+
+	ordered := []orderedFeedItem{}
 	for rows.Next() {
-		item, err := scanFeedItem(rows)
+		item, firstSeenAt, err := scanFeedItemWithFirstSeen(rows)
 		if err != nil {
 			return nil, err
 		}
-		items = append(items, item)
+		ordered = append(ordered, orderedFeedItem{item: item, firstSeenAt: firstSeenAt})
 	}
-	return items, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	sort.SliceStable(ordered, func(i, j int) bool {
+		leftSortAt := effectiveSortTime(ordered[i].item.PublishedAt, ordered[i].firstSeenAt)
+		rightSortAt := effectiveSortTime(ordered[j].item.PublishedAt, ordered[j].firstSeenAt)
+		if !leftSortAt.Equal(rightSortAt) {
+			return leftSortAt.After(rightSortAt)
+		}
+		if !ordered[i].firstSeenAt.Equal(ordered[j].firstSeenAt) {
+			return ordered[i].firstSeenAt.After(ordered[j].firstSeenAt)
+		}
+		if ordered[i].item.SourceRank != ordered[j].item.SourceRank {
+			return ordered[i].item.SourceRank < ordered[j].item.SourceRank
+		}
+		if ordered[i].item.Source != ordered[j].item.Source {
+			return ordered[i].item.Source < ordered[j].item.Source
+		}
+		return ordered[i].item.ExternalID < ordered[j].item.ExternalID
+	})
+
+	if offset < 0 {
+		offset = 0
+	}
+	if offset >= len(ordered) {
+		return []domain.FeedItem{}, nil
+	}
+	end := len(ordered)
+	if limit > 0 && offset+limit < end {
+		end = offset + limit
+	}
+	items := make([]domain.FeedItem, 0, end-offset)
+	for _, entry := range ordered[offset:end] {
+		items = append(items, entry.item)
+	}
+	return items, nil
 }
 
 func (r *SQLiteRepository) CountTotalItems() (int, error) {
@@ -209,18 +242,28 @@ func (r *SQLiteRepository) CountTotalItems() (int, error) {
 }
 
 func scanFeedItem(scanner interface{ Scan(dest ...any) error }) (domain.FeedItem, error) {
+	item, _, err := scanFeedItemWithFirstSeen(scanner)
+	return item, err
+}
+
+func scanFeedItemWithFirstSeen(scanner interface{ Scan(dest ...any) error }) (domain.FeedItem, time.Time, error) {
 	var source, externalID, title, url string
-	var summary, author, commentsURL, publishedAt, metadataJSON sql.NullString
+	var summary, author, commentsURL, publishedAt, metadataJSON, firstSeenAt sql.NullString
 	var score sql.NullInt64
 	var sourceRank int
-	if err := scanner.Scan(&source, &externalID, &title, &url, &summary, &author, &score, &commentsURL, &publishedAt, &sourceRank, &metadataJSON); err != nil {
-		return domain.FeedItem{}, fmt.Errorf("scan item: %w", err)
+	if err := scanner.Scan(&source, &externalID, &title, &url, &summary, &author, &score, &commentsURL, &publishedAt, &sourceRank, &metadataJSON, &firstSeenAt); err != nil {
+		return domain.FeedItem{}, time.Time{}, fmt.Errorf("scan item: %w", err)
 	}
 	metadata := map[string]any{}
 	if metadataJSON.Valid && metadataJSON.String != "" {
 		if err := json.Unmarshal([]byte(metadataJSON.String), &metadata); err != nil {
-			return domain.FeedItem{}, fmt.Errorf("unmarshal metadata: %w", err)
+			return domain.FeedItem{}, time.Time{}, fmt.Errorf("unmarshal metadata: %w", err)
 		}
+	}
+	firstSeen := fromNullString(firstSeenAt)
+	firstSeenValue := time.Time{}
+	if firstSeen != nil {
+		firstSeenValue = firstSeen.UTC()
 	}
 	return domain.FeedItem{
 		Source:      source,
@@ -234,7 +277,7 @@ func scanFeedItem(scanner interface{ Scan(dest ...any) error }) (domain.FeedItem
 		PublishedAt: fromNullString(publishedAt),
 		SourceRank:  sourceRank,
 		Metadata:    metadata,
-	}, nil
+	}, firstSeenValue, nil
 }
 
 func toISO(value *time.Time) any {
@@ -304,6 +347,13 @@ func searchTerms(raw string) []string {
 func likePattern(term string) string {
 	replacer := strings.NewReplacer(`\\`, `\\\\`, `%`, `\\%`, `_`, `\\_`)
 	return "%" + replacer.Replace(term) + "%"
+}
+
+func effectiveSortTime(publishedAt *time.Time, firstSeenAt time.Time) time.Time {
+	if publishedAt != nil {
+		return publishedAt.UTC()
+	}
+	return firstSeenAt.UTC()
 }
 
 func truncate(value string, limit int) string {

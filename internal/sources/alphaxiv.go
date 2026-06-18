@@ -193,7 +193,16 @@ func alphaXivTags(card *goquery.Selection) []string {
 var alphaXivDatePattern = regexp.MustCompile(`\b\d{1,2}\s+[A-Z][a-z]{2}\s+\d{4}\b`)
 
 func alphaXivPublishedAt(card *goquery.Selection) *time.Time {
-	match := alphaXivDatePattern.FindString(card.Text())
+	match := ""
+	card.Find("span").EachWithBreak(func(_ int, node *goquery.Selection) bool {
+		text := strings.Join(strings.Fields(node.Text()), " ")
+		match = alphaXivDatePattern.FindString(text)
+		return match == ""
+	})
+	if match == "" {
+		normalized := strings.Join(strings.Fields(card.Text()), " ")
+		match = alphaXivDatePattern.FindString(normalized)
+	}
 	if match == "" {
 		return nil
 	}
