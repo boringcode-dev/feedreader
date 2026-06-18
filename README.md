@@ -38,6 +38,7 @@
   - Hugging Face cards show **upvotes**
 - **Responsive, minimalist UI** with:
   - source filters
+  - real source icons in filters, dialog rows, and card metadata
   - dark/light mode
   - inline expanding search
   - refresh control
@@ -235,6 +236,8 @@ Presentation-layer note:
   - Hacker News: points and comments
   - GitHub: stars, today, forks
   - Hugging Face Papers: upvotes
+- source icons are not embedded in the brief text itself
+- the current card layout renders the real source icon inline before the host/domain line
 
 ---
 
@@ -252,6 +255,9 @@ Presentation-layer note:
 
 - the configure button opens a dialog that lets the user choose visible sources
 - selected sources are stored in `localStorage` under `feedreader.sources`
+- source-specific filters render as **real icon-only buttons**
+- `All` remains a text button
+- the source dialog renders **real source icons** before each source name
 - if **2 or more** sources are enabled, the filter bar shows:
   - `All`
   - each enabled source

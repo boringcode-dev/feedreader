@@ -15,8 +15,8 @@
     <link rel="icon" href="/favicon.svg?v=6" sizes="any" type="image/svg+xml" />
     <link rel="shortcut icon" href="/favicon.svg?v=6" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=6" />
-    <link rel="stylesheet" href="/static/style.css?v=11" />
-    <script src="/static/app.js?v=11" defer></script>
+    <link rel="stylesheet" href="/static/style.css?v=17" />
+    <script src="/static/app.js?v=15" defer></script>
   </head>
   <body>
     <header class="shell page-header">
@@ -57,7 +57,13 @@
           </button>
           <nav class="segmented" data-filter-nav aria-label="Source filters">
             {{range .SourceFilters}}
-            <button class="filter-button{{if .Active}} is-active{{end}}" type="button" data-filter="{{.Key}}">{{.Label}}</button>
+            {{if eq .Key "all"}}
+            <button class="filter-button{{if .Active}} is-active{{end}}" type="button" data-filter="{{.Key}}" aria-label="{{.Label}}" title="{{.Label}}">All</button>
+            {{else}}
+            <button class="filter-button{{if .Active}} is-active{{end}} filter-button--icon" type="button" data-filter="{{.Key}}" aria-label="{{.Label}}" title="{{.Label}}">
+              <img class="source-icon-image source-icon-image--filter source-icon-image--{{.Key}}" src="{{.IconPath}}" alt="" aria-hidden="true" />
+            </button>
+            {{end}}
             {{end}}
           </nav>
         </div>
@@ -96,14 +102,17 @@
         <div class="config-options">
           <label class="config-option">
             <input type="checkbox" value="hackernews" data-source-option checked />
+            <img class="source-icon-image source-icon-image--dialog source-icon-image--hackernews" src="/static/source-icons/hackernews.svg" alt="" aria-hidden="true" />
             <span>Hacker News</span>
           </label>
           <label class="config-option">
             <input type="checkbox" value="github" data-source-option checked />
+            <img class="source-icon-image source-icon-image--dialog source-icon-image--github" src="/static/source-icons/github.svg" alt="" aria-hidden="true" />
             <span>GitHub Trending</span>
           </label>
           <label class="config-option">
             <input type="checkbox" value="huggingface" data-source-option checked />
+            <img class="source-icon-image source-icon-image--dialog source-icon-image--huggingface" src="/static/source-icons/huggingface.svg" alt="" aria-hidden="true" />
             <span>Hugging Face Papers Trending</span>
           </label>
         </div>
@@ -132,9 +141,11 @@
             <a href="{{.URL}}" target="_blank" rel="noreferrer">{{.Title}}</a>
           </h2>
           {{if .Brief}}
-          <p class="item-brief">{{.Brief}}</p>
+          <p class="item-brief">
+            <span class="item-brief-text">{{.Brief}}</span>
+          </p>
           {{end}}
-          <p class="item-host">{{.Host}}</p>
+          <p class="item-host"><img class="source-icon-image source-icon-image--host source-icon-image--{{.Source}}" src="{{if eq .Source "hackernews"}}/static/source-icons/hackernews.svg{{else if eq .Source "github"}}/static/source-icons/github.svg{{else if eq .Source "huggingface"}}/static/source-icons/huggingface.svg{{end}}" alt="" aria-hidden="true" /><span class="item-host-text">{{.Host}}</span></p>
         </article>
         {{end}}
       </section>

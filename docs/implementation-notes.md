@@ -33,6 +33,11 @@ The source adapters already capture raw metadata, but the visible card summaries
 
 This formatting lives in `internal/service/service.go` rather than in the source adapters.
 
+### Card metadata layout
+- the source icon is **not** embedded into the brief string
+- the brief line renders metrics/summary text only
+- the real source icon is rendered inline before the host/domain line
+
 ## Search contract
 
 ### UX
@@ -70,14 +75,16 @@ Search matches across:
   - Hacker News
   - GitHub Trending
   - Hugging Face Papers Trending
+- each dialog row shows the real source icon before the source name
 
 ### Filter bar behavior
 - If all 3 sources are enabled:
-  - visible filters are `All`, `HN`, `GH`, `HF`
+  - visible filters are `All`, plus icon-only buttons for HN/GH/HF
 - If 2 sources are enabled:
-  - visible filters are `All` plus the enabled sources
+  - visible filters are `All` plus the enabled source icons
 - If exactly 1 source is enabled:
-  - only that source filter is shown
+  - only that source icon filter is shown
+- `All` remains a text button rather than an icon button
 - If the current active filter becomes invalid after saving source config:
   - fall back to the first visible source/filter
 
@@ -104,5 +111,9 @@ Important consequence:
 
 - README screenshot asset:
   - `docs/assets/feedreader-home.png`
+- Source icon assets:
+  - `web/static/source-icons/hackernews.svg`
+  - `web/static/source-icons/github.svg`
+  - `web/static/source-icons/huggingface.svg`
 
 When UI changes materially, replace the screenshot and update README + this note together.

@@ -40,9 +40,10 @@ type pageData struct {
 }
 
 type sourceFilter struct {
-	Key    string
-	Label  string
-	Active bool
+	Key      string
+	Label    string
+	IconPath string
+	Active   bool
 }
 
 func New(cfg config.Config, svc *service.FeedService, baseDir string) (*App, error) {
@@ -210,10 +211,15 @@ func (a *App) staticFile(name, contentType string) http.HandlerFunc {
 }
 
 func buildSourceFilters(current string) []sourceFilter {
-	defs := []sourceFilter{{Key: "all", Label: "All"}, {Key: "hackernews", Label: "HN"}, {Key: "github", Label: "GH"}, {Key: "huggingface", Label: "HF"}}
+	defs := []sourceFilter{
+		{Key: "all", Label: "All enabled sources"},
+		{Key: "hackernews", Label: "Hacker News", IconPath: "/static/source-icons/hackernews.svg"},
+		{Key: "github", Label: "GitHub Trending", IconPath: "/static/source-icons/github.svg"},
+		{Key: "huggingface", Label: "Hugging Face Papers Trending", IconPath: "/static/source-icons/huggingface.svg"},
+	}
 	filters := make([]sourceFilter, 0, len(defs))
 	for _, item := range defs {
-		filters = append(filters, sourceFilter{Key: item.Key, Label: item.Label, Active: item.Key == current})
+		filters = append(filters, sourceFilter{Key: item.Key, Label: item.Label, IconPath: item.IconPath, Active: item.Key == current})
 	}
 	return filters
 }

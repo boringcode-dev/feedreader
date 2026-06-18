@@ -2,10 +2,15 @@
   const root = document.documentElement;
   const availableSources = ['hackernews', 'github', 'huggingface'];
   const sourceLabels = {
-    all: 'All',
-    hackernews: 'HN',
-    github: 'GH',
-    huggingface: 'HF',
+    all: 'All enabled sources',
+    hackernews: 'Hacker News',
+    github: 'GitHub Trending',
+    huggingface: 'Hugging Face Papers Trending',
+  };
+  const sourceIconPaths = {
+    hackernews: '/static/source-icons/hackernews.svg',
+    github: '/static/source-icons/github.svg',
+    huggingface: '/static/source-icons/huggingface.svg',
   };
   const filterNav = document.querySelector('[data-filter-nav]');
   const controlsRow = document.querySelector('[data-controls-row]');
@@ -45,8 +50,8 @@
         <span class="item-index">${escapeHtml(item.index ?? '')}.</span>
         <a href="${escapeAttr(item.url || '#')}" target="_blank" rel="noreferrer">${escapeHtml(item.title || '')}</a>
       </h2>
-      ${item.brief ? `<p class="item-brief">${escapeHtml(item.brief)}</p>` : ''}
-      <p class="item-host">${escapeHtml(item.host || hostLabel(item.url || ''))}</p>
+      ${item.brief ? `<p class="item-brief"><span class="item-brief-text">${escapeHtml(item.brief)}</span></p>` : ''}
+      <p class="item-host"><img class="source-icon-image source-icon-image--host source-icon-image--${escapeAttr(item.source || '')}" src="${escapeAttr(sourceIconPaths[item.source] || '')}" alt="" aria-hidden="true" /><span class="item-host-text">${escapeHtml(item.host || hostLabel(item.url || ''))}</span></p>
     </article>
   `;
 
@@ -90,8 +95,11 @@
     const keys = visibleFilterKeys();
     filterNav.innerHTML = keys.map((key) => {
       const isActive = key === activeFilter;
-      return `<button class="filter-button${isActive ? ' is-active' : ''}" type="button" data-filter="${key}" aria-pressed="${String(isActive)}">${sourceLabels[key] || key}</button>`;
-    }).join('');
+      if (key === 'all') {
+        return `<button class="filter-button${isActive ? ' is-active' : ''}" type="button" data-filter="${key}" aria-pressed="${String(isActive)}" aria-label="${escapeAttr(sourceLabels[key] || key)}" title="${escapeAttr(sourceLabels[key] || key)}">All</button>`;
+      }
+      return `<button class="filter-button filter-button--icon${isActive ? ' is-active' : ''}" type="button" data-filter="${key}" aria-pressed="${String(isActive)}" aria-label="${escapeAttr(sourceLabels[key] || key)}" title="${escapeAttr(sourceLabels[key] || key)}"><img class="source-icon-image source-icon-image--filter source-icon-image--${escapeAttr(key)}" src="${escapeAttr(sourceIconPaths[key] || '')}" alt="" aria-hidden="true" /></button>`;
+    }).join(''); // source keys/icon paths are fixed local constants, not user content
   }
 
   function syncConfigOptions() {

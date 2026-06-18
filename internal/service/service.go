@@ -202,10 +202,10 @@ func cardBrief(item domain.FeedItem) *string {
 			fragments = append(fragments, fmtSprintf("%d comments", comments))
 		}
 		if len(fragments) > 0 {
-			value := "Hacker News — " + strings.Join(fragments, " · ") + "."
+			value := strings.Join(fragments, " · ")
 			return &value
 		}
-		value := "Hacker News link."
+		value := "Hacker News link"
 		return &value
 	case "github":
 		fragments := []string{}
@@ -222,24 +222,24 @@ func cardBrief(item domain.FeedItem) *string {
 		if item.Summary != nil && strings.TrimSpace(*item.Summary) != "" {
 			summary := strings.Join(strings.Fields(*item.Summary), " ")
 			if prefix != "" {
-				value := prefix + ". " + summary
+				value := prefix + " - " + summary
 				return &value
 			}
 			return &summary
 		}
 		if language, ok := metadataString(item.Metadata, "language"); ok {
 			if prefix != "" {
-				value := prefix + fmtSprintf(". Trending %s repository on GitHub.", language)
+				value := prefix + fmtSprintf(" - Trending %s repository on GitHub", language)
 				return &value
 			}
-			value := "Trending " + language + " repository on GitHub."
+			value := "Trending " + language + " repository on GitHub"
 			return &value
 		}
 		if prefix != "" {
-			value := prefix + "."
+			value := prefix
 			return &value
 		}
-		value := "Trending repository on GitHub."
+		value := "Trending repository on GitHub"
 		return &value
 	case "huggingface":
 		prefix := ""
@@ -249,24 +249,24 @@ func cardBrief(item domain.FeedItem) *string {
 		if item.Summary != nil && strings.TrimSpace(*item.Summary) != "" {
 			summary := strings.Join(strings.Fields(*item.Summary), " ")
 			if prefix != "" {
-				value := prefix + ". " + summary
+				value := prefix + " - " + summary
 				return &value
 			}
 			return &summary
 		}
 		if item.Author != nil && strings.TrimSpace(*item.Author) != "" {
 			if prefix != "" {
-				value := prefix + ". " + *item.Author
+				value := prefix + " - " + *item.Author
 				return &value
 			}
 			value := *item.Author
 			return &value
 		}
 		if prefix != "" {
-			value := prefix + "."
+			value := prefix
 			return &value
 		}
-		value := "Trending paper on Hugging Face."
+		value := "Trending paper on Hugging Face"
 		return &value
 	default:
 		if item.Summary != nil && strings.TrimSpace(*item.Summary) != "" {

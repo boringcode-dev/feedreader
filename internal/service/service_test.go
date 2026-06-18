@@ -27,7 +27,7 @@ func TestBuildCardsIncludesHackerNewsCountsWithNormalizedSeparator(t *testing.T)
 		t.Fatalf("expected one card with brief, got %#v", cards)
 	}
 	brief := *cards[0].Brief
-	if brief != "Hacker News — 50 points · 24 comments." {
+	if brief != "50 points · 24 comments" {
 		t.Fatalf("unexpected brief: %q", brief)
 	}
 }
