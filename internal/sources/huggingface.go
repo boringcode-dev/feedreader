@@ -17,8 +17,8 @@ import (
 type HuggingFacePapersSource struct{}
 
 func (HuggingFacePapersSource) Key() string         { return "huggingface" }
-func (HuggingFacePapersSource) Label() string       { return "Hugging Face Papers" }
-func (HuggingFacePapersSource) HomePageURL() string { return "https://huggingface.co/papers" }
+func (HuggingFacePapersSource) Label() string       { return "Hugging Face Papers Trending" }
+func (HuggingFacePapersSource) HomePageURL() string { return "https://huggingface.co/papers/trending" }
 
 func (s HuggingFacePapersSource) Fetch(ctx context.Context, client *http.Client) ([]domain.FeedItem, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.HomePageURL(), nil)

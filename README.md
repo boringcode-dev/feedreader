@@ -28,7 +28,7 @@
 - **Multi-source feed aggregation**
   - Hacker News
   - GitHub Trending
-  - Hugging Face Papers
+  - Hugging Face Papers Trending
 - **Persistent local storage** with SQLite
 - **Incremental fetch model** that keeps older items in the database
 - **Server-backed incremental loading**: first page loads 12 items, filters trigger fresh queries, and `View more` appends more items in place
