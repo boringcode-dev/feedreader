@@ -123,8 +123,21 @@ func (s *FeedService) Dashboard(limit int) ([]domain.SourceSnapshot, error) {
 	return snapshots, nil
 }
 
-func (s *FeedService) FeedItems(limit int, source string) ([]domain.FeedItem, error) {
-	return s.repo.ListFeedItems(limit, source)
+func (s *FeedService) FeedItems(limit int, offset int, source string) ([]domain.FeedItem, bool, error) {
+	fetchLimit := limit
+	if fetchLimit > 0 {
+		fetchLimit = limit + 1
+	}
+	items, err := s.repo.ListFeedItems(fetchLimit, offset, source)
+	if err != nil {
+		return nil, false, err
+	}
+	hasNext := false
+	if limit > 0 && len(items) > limit {
+		hasNext = true
+		items = items[:limit]
+	}
+	return items, hasNext, nil
 }
 
 func (s *FeedService) HealthPayload() (map[string]any, error) {
@@ -153,12 +166,12 @@ func (s *FeedService) HealthPayload() (map[string]any, error) {
 	}, nil
 }
 
-func BuildCards(items []domain.FeedItem) []domain.CardView {
+func BuildCards(items []domain.FeedItem, offset int) []domain.CardView {
 	cards := make([]domain.CardView, 0, len(items))
 	for i, item := range items {
 		cards = append(cards, domain.CardView{
 			Source: item.Source,
-			Index:  i + 1,
+			Index:  offset + i + 1,
 			Title:  item.Title,
 			URL:    item.URL,
 			Brief:  cardBrief(item),

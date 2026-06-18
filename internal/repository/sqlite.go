@@ -140,7 +140,7 @@ func (r *SQLiteRepository) GetCurrentItems(source string, limit int) ([]domain.F
 	return items, rows.Err()
 }
 
-func (r *SQLiteRepository) ListFeedItems(limit int, source string) ([]domain.FeedItem, error) {
+func (r *SQLiteRepository) ListFeedItems(limit int, offset int, source string) ([]domain.FeedItem, error) {
 	query := `
 		SELECT source, external_id, title, url, summary, author, score, comments_url, published_at, source_rank, metadata_json
 		FROM items
@@ -154,6 +154,10 @@ func (r *SQLiteRepository) ListFeedItems(limit int, source string) ([]domain.Fee
 	if limit > 0 {
 		query += ` LIMIT ?`
 		args = append(args, limit)
+	}
+	if offset > 0 {
+		query += ` OFFSET ?`
+		args = append(args, offset)
 	}
 	rows, err := r.db.Query(query, args...)
 	if err != nil {

@@ -4,14 +4,19 @@ import (
 	"encoding/json"
 	"html/template"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 
 	"feedreader/internal/config"
 	"feedreader/internal/domain"
 	"feedreader/internal/service"
 )
+
+const pageSize = 12
 
 type App struct {
 	cfg        config.Config
@@ -22,16 +27,19 @@ type App struct {
 }
 
 type pageData struct {
-	Cards               []domain.CardView
-	Errors              []domain.ErrorView
-	SourceFilters       []sourceFilter
-	InitialVisibleCards int
-	CurrentYear         int
+	Cards         []domain.CardView
+	Errors        []domain.ErrorView
+	SourceFilters []sourceFilter
+	CurrentSource string
+	PageSize      int
+	HasNext       bool
+	CurrentYear   int
 }
 
 type sourceFilter struct {
-	Key   string
-	Label string
+	Key    string
+	Label  string
+	Active bool
 }
 
 func New(cfg config.Config, svc *service.FeedService, baseDir string) (*App, error) {
@@ -50,9 +58,7 @@ func New(cfg config.Config, svc *service.FeedService, baseDir string) (*App, err
 	return app, nil
 }
 
-func (a *App) Handler() http.Handler {
-	return a.mux
-}
+func (a *App) Handler() http.Handler { return a.mux }
 
 func (a *App) routes() {
 	staticFS := http.FileServer(http.Dir(a.staticRoot))
@@ -74,7 +80,12 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	items, err := a.service.FeedItems(0, "")
+	source := normalizeSource(r.URL.Query().Get("source"))
+	querySource := source
+	if querySource == "all" {
+		querySource = ""
+	}
+	items, hasNext, err := a.service.FeedItems(pageSize, 0, querySource)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -85,11 +96,13 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data := pageData{
-		Cards:               service.BuildCards(items),
-		Errors:              service.BuildErrors(snapshots),
-		SourceFilters:       []sourceFilter{{Key: "all", Label: "All"}, {Key: "hackernews", Label: "HN"}, {Key: "github", Label: "GH"}, {Key: "huggingface", Label: "HF"}},
-		InitialVisibleCards: 12,
-		CurrentYear:         time.Now().UTC().Year(),
+		Cards:         service.BuildCards(items, 0),
+		Errors:        service.BuildErrors(snapshots),
+		SourceFilters: buildSourceFilters(source),
+		CurrentSource: source,
+		PageSize:      pageSize,
+		HasNext:       hasNext,
+		CurrentYear:   time.Now().UTC().Year(),
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := a.templates.ExecuteTemplate(w, "index.html", data); err != nil {
@@ -108,31 +121,40 @@ func (a *App) healthz(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) itemsAPI(w http.ResponseWriter, r *http.Request) {
-	requestedSource := r.URL.Query().Get("source")
-	items, err := a.service.FeedItems(0, requestedSource)
+	source := normalizeSource(r.URL.Query().Get("source"))
+	limit := parsePositiveInt(r.URL.Query().Get("limit"), pageSize)
+	if limit > 100 {
+		limit = 100
+	}
+	offset := parseNonNegativeInt(r.URL.Query().Get("offset"), 0)
+	querySource := source
+	if querySource == "all" {
+		querySource = ""
+	}
+	items, hasNext, err := a.service.FeedItems(limit, offset, querySource)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	payloadItems := make([]map[string]any, 0, len(items))
-	for _, item := range items {
-		payloadItems = append(payloadItems, map[string]any{
-			"source":       item.Source,
-			"external_id":  item.ExternalID,
-			"title":        item.Title,
-			"url":          item.URL,
-			"summary":      maybeString(item.Summary),
-			"author":       maybeString(item.Author),
-			"score":        maybeInt(item.Score),
-			"comments_url": maybeString(item.CommentsURL),
-			"published_at": maybeTime(item.PublishedAt),
-			"source_rank":  item.SourceRank,
-			"metadata":     item.Metadata,
+	cards := service.BuildCards(items, offset)
+	payloadCards := make([]map[string]any, 0, len(cards))
+	for _, card := range cards {
+		payloadCards = append(payloadCards, map[string]any{
+			"source": card.Source,
+			"index":  card.Index,
+			"title":  card.Title,
+			"url":    card.URL,
+			"brief":  maybeString(card.Brief),
+			"host":   card.Host,
 		})
 	}
 	payload := map[string]any{
 		"generated_at": time.Now().UTC().Format(time.RFC3339Nano),
-		"items":        payloadItems,
+		"source":       source,
+		"offset":       offset,
+		"limit":        limit,
+		"has_next":     hasNext,
+		"items":        payloadCards,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(payload)
@@ -152,10 +174,7 @@ func (a *App) refresh(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	payload := map[string]any{
-		"ok":       allOK,
-		"outcomes": outcomes,
-	}
+	payload := map[string]any{"ok": allOK, "outcomes": outcomes}
 	w.Header().Set("Content-Type", "application/json")
 	if !allOK {
 		w.WriteHeader(http.StatusBadGateway)
@@ -177,6 +196,60 @@ func (a *App) staticFile(name, contentType string) http.HandlerFunc {
 		defer file.Close()
 		http.ServeContent(w, r, name, time.Now(), file)
 	}
+}
+
+func buildSourceFilters(current string) []sourceFilter {
+	defs := []sourceFilter{{Key: "all", Label: "All"}, {Key: "hackernews", Label: "HN"}, {Key: "github", Label: "GH"}, {Key: "huggingface", Label: "HF"}}
+	filters := make([]sourceFilter, 0, len(defs))
+	for _, item := range defs {
+		filters = append(filters, sourceFilter{Key: item.Key, Label: item.Label, Active: item.Key == current})
+	}
+	return filters
+}
+
+func normalizeSource(raw string) string {
+	switch strings.TrimSpace(raw) {
+	case "", "all":
+		return "all"
+	case "hackernews", "github", "huggingface":
+		return raw
+	default:
+		return "all"
+	}
+}
+
+func parsePositiveInt(raw string, fallback int) int {
+	if strings.TrimSpace(raw) == "" {
+		return fallback
+	}
+	parsed, err := strconv.Atoi(raw)
+	if err != nil || parsed < 1 {
+		return fallback
+	}
+	return parsed
+}
+
+func parseNonNegativeInt(raw string, fallback int) int {
+	if strings.TrimSpace(raw) == "" {
+		return fallback
+	}
+	parsed, err := strconv.Atoi(raw)
+	if err != nil || parsed < 0 {
+		return fallback
+	}
+	return parsed
+}
+
+func sourceURL(source string) string {
+	values := url.Values{}
+	if source != "" && source != "all" {
+		values.Set("source", source)
+	}
+	encoded := values.Encode()
+	if encoded == "" {
+		return "/"
+	}
+	return "/?" + encoded
 }
 
 func maybeString(value *string) any {
