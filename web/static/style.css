@@ -85,9 +85,19 @@ button {
 
 .brand {
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
   font-size: clamp(1.2rem, 2.6vw, 1.55rem);
   font-weight: 700;
   letter-spacing: -0.02em;
+}
+
+.brand-mark {
+  width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 0.35rem;
+  flex: 0 0 auto;
 }
 
 .controls-row {

@@ -39,6 +39,7 @@
 - **Responsive, minimalist UI** with:
   - source filters
   - real source icons in filters, dialog rows, and card metadata
+  - RSS-based app icon/favicon branding
   - dark/light mode
   - inline expanding search
   - refresh control
@@ -122,8 +123,11 @@ internal/web/           HTTP handlers and page rendering
 web/templates/          HTML templates
 web/static/             CSS, JS, icons, PWA assets
 docs/assets/            README screenshots and supporting images
-docs/implementation-notes.md  UI/API/state behavior notes
 ```
+
+Host-level implementation notes for this deployment live at:
+
+- `~/.hermes/implementations/feedreader.md`
 
 ---
 
