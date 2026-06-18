@@ -192,10 +192,6 @@ func BuildErrors(snapshots []domain.SourceSnapshot) []domain.ErrorView {
 }
 
 func cardBrief(item domain.FeedItem) *string {
-	if item.Summary != nil && strings.TrimSpace(*item.Summary) != "" {
-		brief := strings.Join(strings.Fields(*item.Summary), " ")
-		return &brief
-	}
 	switch item.Source {
 	case "hackernews":
 		fragments := []string{}
@@ -206,26 +202,77 @@ func cardBrief(item domain.FeedItem) *string {
 			fragments = append(fragments, fmtSprintf("%d comments", comments))
 		}
 		if len(fragments) > 0 {
-			value := "Hacker News — " + strings.Join(fragments, ", ") + "."
+			value := "Hacker News — " + strings.Join(fragments, " · ") + "."
 			return &value
 		}
 		value := "Hacker News link."
 		return &value
 	case "github":
+		fragments := []string{}
+		if stars, ok := metadataInt(item.Metadata, "total_stars"); ok {
+			fragments = append(fragments, fmtSprintf("%s stars", formatCount(stars)))
+		}
+		if today, ok := metadataInt(item.Metadata, "stars_today"); ok {
+			fragments = append(fragments, fmtSprintf("%s today", formatCount(today)))
+		}
+		if forks, ok := metadataInt(item.Metadata, "forks"); ok {
+			fragments = append(fragments, fmtSprintf("%s forks", formatCount(forks)))
+		}
+		prefix := strings.Join(fragments, " · ")
+		if item.Summary != nil && strings.TrimSpace(*item.Summary) != "" {
+			summary := strings.Join(strings.Fields(*item.Summary), " ")
+			if prefix != "" {
+				value := prefix + ". " + summary
+				return &value
+			}
+			return &summary
+		}
 		if language, ok := metadataString(item.Metadata, "language"); ok {
+			if prefix != "" {
+				value := prefix + fmtSprintf(". Trending %s repository on GitHub.", language)
+				return &value
+			}
 			value := "Trending " + language + " repository on GitHub."
+			return &value
+		}
+		if prefix != "" {
+			value := prefix + "."
 			return &value
 		}
 		value := "Trending repository on GitHub."
 		return &value
 	case "huggingface":
+		prefix := ""
+		if item.Score != nil {
+			prefix = fmtSprintf("%s upvotes", formatCount(*item.Score))
+		}
+		if item.Summary != nil && strings.TrimSpace(*item.Summary) != "" {
+			summary := strings.Join(strings.Fields(*item.Summary), " ")
+			if prefix != "" {
+				value := prefix + ". " + summary
+				return &value
+			}
+			return &summary
+		}
 		if item.Author != nil && strings.TrimSpace(*item.Author) != "" {
+			if prefix != "" {
+				value := prefix + ". " + *item.Author
+				return &value
+			}
 			value := *item.Author
+			return &value
+		}
+		if prefix != "" {
+			value := prefix + "."
 			return &value
 		}
 		value := "Trending paper on Hugging Face."
 		return &value
 	default:
+		if item.Summary != nil && strings.TrimSpace(*item.Summary) != "" {
+			brief := strings.Join(strings.Fields(*item.Summary), " ")
+			return &brief
+		}
 		return nil
 	}
 }
@@ -283,6 +330,28 @@ func metadataString(metadata map[string]any, key string) (string, bool) {
 		return "", false
 	}
 	return text, true
+}
+
+func formatCount(value int) string {
+	if value == 0 {
+		return "0"
+	}
+	negative := value < 0
+	if negative {
+		value = -value
+	}
+	digits := fmtSprintf("%d", value)
+	parts := []string{}
+	for len(digits) > 3 {
+		parts = append([]string{digits[len(digits)-3:]}, parts...)
+		digits = digits[:len(digits)-3]
+	}
+	parts = append([]string{digits}, parts...)
+	joined := strings.Join(parts, ",")
+	if negative {
+		return "-" + joined
+	}
+	return joined
 }
 
 func loadScheduleLocation() *time.Location {
