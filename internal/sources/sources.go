@@ -19,5 +19,6 @@ func Build() []Source {
 		HackerNewsSource{},
 		GitHubTrendingSource{},
 		HuggingFacePapersSource{},
+		AlphaXivSource{},
 	}
 }

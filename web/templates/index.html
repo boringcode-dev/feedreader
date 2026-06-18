@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>reader</title>
-    <meta name="description" content="Tiny private feed reader for Hacker News, GitHub Trending, and Hugging Face Papers." />
+    <meta name="description" content="Tiny private feed reader for Hacker News, GitHub Trending, Hugging Face Papers, and alphaXiv." />
     <meta name="theme-color" content="#111e2c" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#111e2c" />
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#e1ebf7" />
@@ -15,8 +15,8 @@
     <link rel="icon" href="/favicon.svg?v=8" sizes="any" type="image/svg+xml" />
     <link rel="shortcut icon" href="/favicon.svg?v=8" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=8" />
-    <link rel="stylesheet" href="/static/style.css?v=20" />
-    <script src="/static/app.js?v=16" defer></script>
+    <link rel="stylesheet" href="/static/style.css?v=21" />
+    <script src="/static/app.js?v=17" defer></script>
   </head>
   <body>
     <header class="shell page-header">
@@ -115,6 +115,11 @@
             <img class="source-icon-image source-icon-image--dialog source-icon-image--huggingface" src="/static/source-icons/huggingface.svg" alt="" aria-hidden="true" />
             <span>Hugging Face Papers Trending</span>
           </label>
+          <label class="config-option">
+            <input type="checkbox" value="alphaxiv" data-source-option checked />
+            <img class="source-icon-image source-icon-image--dialog source-icon-image--alphaxiv" src="/static/source-icons/alphaxiv.png" alt="" aria-hidden="true" />
+            <span>alphaXiv</span>
+          </label>
         </div>
         <div class="config-dialog-actions">
           <button class="dialog-button" type="button" data-source-config-cancel>Cancel</button>
@@ -145,7 +150,7 @@
             <span class="item-brief-text">{{.Brief}}</span>
           </p>
           {{end}}
-          <p class="item-host"><img class="source-icon-image source-icon-image--host source-icon-image--{{.Source}}" src="{{if eq .Source "hackernews"}}/static/source-icons/hackernews.svg{{else if eq .Source "github"}}/static/source-icons/github.svg{{else if eq .Source "huggingface"}}/static/source-icons/huggingface.svg{{end}}" alt="" aria-hidden="true" /><span class="item-host-text">{{.Host}}</span></p>
+          <p class="item-host"><img class="source-icon-image source-icon-image--host source-icon-image--{{.Source}}" src="{{if eq .Source "hackernews"}}/static/source-icons/hackernews.svg{{else if eq .Source "github"}}/static/source-icons/github.svg{{else if eq .Source "huggingface"}}/static/source-icons/huggingface.svg{{else if eq .Source "alphaxiv"}}/static/source-icons/alphaxiv.png{{end}}" alt="" aria-hidden="true" /><span class="item-host-text">{{.Host}}</span></p>
         </article>
         {{end}}
       </section>

@@ -1,16 +1,19 @@
 (() => {
   const root = document.documentElement;
-  const availableSources = ['hackernews', 'github', 'huggingface'];
+  const availableSources = ['hackernews', 'github', 'huggingface', 'alphaxiv'];
+  const legacyDefaultSources = ['hackernews', 'github', 'huggingface'];
   const sourceLabels = {
     all: 'All enabled sources',
     hackernews: 'Hacker News',
     github: 'GitHub Trending',
     huggingface: 'Hugging Face Papers Trending',
+    alphaxiv: 'alphaXiv',
   };
   const sourceIconPaths = {
     hackernews: '/static/source-icons/hackernews.svg',
     github: '/static/source-icons/github.svg',
     huggingface: '/static/source-icons/huggingface.svg',
+    alphaxiv: '/static/source-icons/alphaxiv.png',
   };
   const filterNav = document.querySelector('[data-filter-nav]');
   const controlsRow = document.querySelector('[data-controls-row]');
@@ -69,6 +72,9 @@
     try {
       const parsed = JSON.parse(localStorage.getItem(sourceConfigStorageKey) || 'null');
       const normalized = normalizeSelectedSources(parsed);
+      if (normalized.length === legacyDefaultSources.length && legacyDefaultSources.every((source, index) => normalized[index] === source)) {
+        return [...availableSources];
+      }
       return normalized.length > 0 ? normalized : [...availableSources];
     } catch {
       return [...availableSources];

@@ -216,6 +216,7 @@ func buildSourceFilters(current string) []sourceFilter {
 		{Key: "hackernews", Label: "Hacker News", IconPath: "/static/source-icons/hackernews.svg"},
 		{Key: "github", Label: "GitHub Trending", IconPath: "/static/source-icons/github.svg"},
 		{Key: "huggingface", Label: "Hugging Face Papers Trending", IconPath: "/static/source-icons/huggingface.svg"},
+		{Key: "alphaxiv", Label: "alphaXiv", IconPath: "/static/source-icons/alphaxiv.png"},
 	}
 	filters := make([]sourceFilter, 0, len(defs))
 	for _, item := range defs {
@@ -228,7 +229,7 @@ func normalizeSource(raw string) string {
 	switch strings.TrimSpace(raw) {
 	case "", "all":
 		return "all"
-	case "hackernews", "github", "huggingface":
+	case "hackernews", "github", "huggingface", "alphaxiv":
 		return raw
 	default:
 		return "all"

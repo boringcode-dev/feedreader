@@ -84,3 +84,29 @@ func TestBuildCardsIncludesHuggingFaceUpvotesInBrief(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildCardsIncludesAlphaXivLikesInBrief(t *testing.T) {
+	summary := "A social reading layer for research papers."
+	author := "Jane Doe, John Smith"
+	likes := 86
+	items := []domain.FeedItem{{
+		Source:     "alphaxiv",
+		Title:      "paper",
+		URL:        "https://www.alphaxiv.org/abs/2606.15956",
+		Summary:    &summary,
+		Author:     &author,
+		Score:      &likes,
+		SourceRank: 1,
+	}}
+
+	cards := BuildCards(items, 0)
+	if len(cards) != 1 || cards[0].Brief == nil {
+		t.Fatalf("expected one card with brief, got %#v", cards)
+	}
+	brief := *cards[0].Brief
+	for _, want := range []string{"86 likes", summary} {
+		if !strings.Contains(brief, want) {
+			t.Fatalf("brief %q missing %q", brief, want)
+		}
+	}
+}

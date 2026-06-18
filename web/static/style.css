@@ -285,7 +285,8 @@ button {
   align-self: center;
 }
 
-.source-icon-image--hackernews {
+.source-icon-image--hackernews,
+.source-icon-image--alphaxiv {
   border-radius: 5px;
 }
 

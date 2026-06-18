@@ -268,6 +268,33 @@ func cardBrief(item domain.FeedItem) *string {
 		}
 		value := "Trending paper on Hugging Face"
 		return &value
+	case "alphaxiv":
+		prefix := ""
+		if item.Score != nil {
+			prefix = fmtSprintf("%s likes", formatCount(*item.Score))
+		}
+		if item.Summary != nil && strings.TrimSpace(*item.Summary) != "" {
+			summary := strings.Join(strings.Fields(*item.Summary), " ")
+			if prefix != "" {
+				value := prefix + " - " + summary
+				return &value
+			}
+			return &summary
+		}
+		if item.Author != nil && strings.TrimSpace(*item.Author) != "" {
+			if prefix != "" {
+				value := prefix + " - " + *item.Author
+				return &value
+			}
+			value := *item.Author
+			return &value
+		}
+		if prefix != "" {
+			value := prefix
+			return &value
+		}
+		value := "Trending paper on alphaXiv"
+		return &value
 	default:
 		if item.Summary != nil && strings.TrimSpace(*item.Summary) != "" {
 			brief := strings.Join(strings.Fields(*item.Summary), " ")

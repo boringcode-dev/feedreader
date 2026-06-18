@@ -29,6 +29,7 @@
   - Hacker News
   - GitHub Trending
   - Hugging Face Papers Trending
+  - alphaXiv Explore
 - **Persistent local storage** with SQLite
 - **Incremental fetch model** that keeps older items in the database
 - **Server-backed incremental loading**: first page loads 12 items, filters and search trigger fresh queries, and `View more` appends more items in place
@@ -36,6 +37,7 @@
   - Hacker News cards show **points** and **comments**
   - GitHub cards show **stars**, **today's stars**, and **forks**
   - Hugging Face cards show **upvotes**
+  - alphaXiv cards show **likes**
 - **Responsive, minimalist UI** with:
   - source filters
   - real source icons in filters, dialog rows, and card metadata
@@ -127,7 +129,7 @@ docs/assets/            README screenshots and supporting images
 
 Host-level implementation notes for this deployment live at:
 
-- `~/.hermes/implementations/feedreader.md`
+- `~/.hermes/implementations/2026-06-18_feedreader-service-implementation.md`
 
 ---
 
@@ -211,7 +213,7 @@ Returns service health and per-source refresh status.
 Returns feed items for incremental loading.
 
 Query params:
-- `source` — optional source filter (`hackernews`, `github`, `huggingface`)
+- `source` — optional source filter (`hackernews`, `github`, `huggingface`, `alphaxiv`)
 - `sources` — optional comma-separated aggregate source set used when the client wants the `All` view scoped to enabled sources (for example `hackernews,github`)
 - `q` — optional case-insensitive search query across title, summary, author, URL host/path, and stored metadata
 - `limit` — page size
@@ -240,6 +242,7 @@ Presentation-layer note:
   - Hacker News: points and comments
   - GitHub: stars, today, forks
   - Hugging Face Papers: upvotes
+  - alphaXiv: likes
 - source icons are not embedded in the brief text itself
 - the current card layout renders the real source icon inline before the host/domain line
 
@@ -259,6 +262,7 @@ Presentation-layer note:
 
 - the configure button opens a dialog that lets the user choose visible sources
 - selected sources are stored in `localStorage` under `feedreader.sources`
+- legacy browsers that previously stored the original 3-source full set are migrated once to include `alphaxiv`
 - source-specific filters render as **real icon-only buttons**
 - `All` remains a text button
 - the source dialog renders **real source icons** before each source name
