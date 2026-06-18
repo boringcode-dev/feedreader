@@ -428,6 +428,11 @@ button {
   border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
 }
 
+.toast.is-offline {
+  background: color-mix(in srgb, var(--surface) 88%, #d29922 12%);
+  border-color: color-mix(in srgb, #d29922 42%, var(--border));
+}
+
 .toast.is-loading::before {
   content: "";
   width: 0.9rem;

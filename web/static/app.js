@@ -53,8 +53,14 @@
   let feedLoading = false;
   let feedLoadingMode = '';
   let activeToastKind = '';
+  let browserOnline = navigator.onLine;
+  let offlineViewUnavailable = false;
+  let reconnectRefetchInFlight = false;
 
   function emptyMessageForState({ source, query }) {
+    if (offlineViewUnavailable) {
+      return 'Offline and no cached items are available for this view yet.';
+    }
     if (query) {
       if (source && source !== 'all') {
         return `No matches found in ${sourceLabels[source] || 'this source'}. Try a different query.`;
@@ -225,6 +231,8 @@
     feedLoadingMode = active ? mode : '';
     if (active) {
       showToast(message, 'loading', { persistent: true });
+    } else if (!browserOnline) {
+      showOfflineToast();
     } else {
       hideToast({ onlyKind: 'loading' });
     }
@@ -276,7 +284,7 @@
       window.clearTimeout(toastTimer);
       toastTimer = null;
     }
-    toast.classList.remove('is-visible', 'is-error', 'is-loading');
+    toast.classList.remove('is-visible', 'is-error', 'is-loading', 'is-offline');
     toast.textContent = '';
     activeToastKind = '';
   };
@@ -290,6 +298,7 @@
     toast.textContent = message;
     toast.classList.toggle('is-error', kind === 'error');
     toast.classList.toggle('is-loading', kind === 'loading');
+    toast.classList.toggle('is-offline', kind === 'offline');
     toast.classList.add('is-visible');
     activeToastKind = kind;
     if (persistent) {
@@ -298,6 +307,10 @@
     toastTimer = window.setTimeout(() => {
       hideToast();
     }, 2200);
+  };
+
+  const showOfflineToast = () => {
+    showToast('Internet disconnected — showing cached feed when available.', 'offline', { persistent: true });
   };
 
   const applyTheme = (theme) => {
@@ -357,7 +370,15 @@
         return;
       }
 
+      const offlineCacheMiss = Boolean(payload.offline && payload.cache_miss);
       const items = payload.items || [];
+      if (append && offlineCacheMiss) {
+        showOfflineToast();
+        renderFeedBody();
+        return;
+      }
+
+      offlineViewUnavailable = !append && offlineCacheMiss;
       hasNext = Boolean(payload.has_next);
       if (cardsGrid) {
         cardsGrid.dataset.hasNext = hasNext ? 'true' : 'false';
@@ -430,8 +451,29 @@
     await fetchItems({ source: activeFilter, query: activeQuery, offset: 0, append: false, loadingMessage });
   }
 
+  async function refetchCurrentViewAfterReconnect() {
+    if (refreshInFlight || reconnectRefetchInFlight) {
+      return false;
+    }
+    reconnectRefetchInFlight = true;
+    try {
+      await refetchCurrentView({ loadingMessage: 'Internet reconnected — refreshing feed…' });
+      showToast('Feed updated', 'success');
+      return true;
+    } catch (error) {
+      showToast('Reconnected, but failed to refresh feed', 'error');
+      return false;
+    } finally {
+      reconnectRefetchInFlight = false;
+    }
+  }
+
   async function refreshFeedList() {
     if (refreshInFlight) {
+      return false;
+    }
+    if (!browserOnline) {
+      showOfflineToast();
       return false;
     }
     refreshInFlight = true;
@@ -655,6 +697,18 @@
     });
   }
 
+  window.addEventListener('offline', () => {
+    browserOnline = false;
+    showOfflineToast();
+  });
+
+  window.addEventListener('online', () => {
+    browserOnline = true;
+    refetchCurrentViewAfterReconnect().catch(() => {
+      showToast('Reconnected, but failed to refresh feed', 'error');
+    });
+  });
+
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/service-worker.js').catch(() => {});
@@ -674,6 +728,10 @@
   renderSearch();
   renderFeedBody();
   setRefreshButtonLoading(false);
+
+  if (!browserOnline) {
+    showOfflineToast();
+  }
 
   if (shouldBootstrapRefetch) {
     refetchCurrentView({ loadingMessage: 'Loading feed…' }).catch(() => {

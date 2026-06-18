@@ -52,10 +52,12 @@
   - when exactly 1 source is enabled, only that source button is shown
 - **Debounced client-side search UX** backed by the server API
 - **Explicit empty states** for no-result source filters and searches
+- **Connectivity toasts** for internet disconnect/reconnect events
 - **Scheduled refresh** every 3 hours on wall-clock boundaries in UTC+7
 - **Manual refresh** from the UI updates the current feed list in place without a full page reload and shows a toast-based loading state while refresh + refetch are running
 - **Persisted visited-link dimming** for feed card titles across reload/reopen using local storage
-- **PWA-ready assets** including manifest, service worker, and touch icons
+- **PWA-ready assets and offline caching** including manifest, service worker, touch icons, cached shell assets, and cached `/api/items` responses for previously visited views
+- **Reconnect list refresh** re-fetches the current view from backend stored items only; it does **not** refresh upstream sources
 - **Docker deployment** with reverse-proxy-friendly HTTP service
 
 ---
@@ -266,6 +268,14 @@ Presentation-layer note:
 - first-load bootstrap queries, source filter changes, searches, `View more`, and manual refresh all show an explicit toast-based loading state
 - source-filter and search requests that return zero items replace the list with an empty-state message instead of leaving stale cards on screen
 - `View more` disables itself while an append request is in flight and hides itself when the current result set has no further page
+
+### Offline and connectivity
+
+- the app shell and previously fetched `GET /api/items` views are cached by the service worker for offline reuse
+- when the browser goes offline, the UI shows a persistent toast: `Internet disconnected — showing cached feed when available.`
+- if an offline view has no cached `/api/items` response yet, the list is replaced with `Offline and no cached items are available for this view yet.`
+- when the browser comes back online, the UI shows `Internet reconnected — refreshing feed…`, then re-fetches the current view from `/api/items`
+- reconnect refreshes backend-stored items only; the only UI path that calls `POST /api/refresh` remains the manual refresh button
 
 ### Source configuration
 
