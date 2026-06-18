@@ -140,16 +140,23 @@ func (r *SQLiteRepository) GetCurrentItems(source string, limit int) ([]domain.F
 	return items, rows.Err()
 }
 
-func (r *SQLiteRepository) ListFeedItems(limit int, offset int, source string, searchQuery string) ([]domain.FeedItem, error) {
+func (r *SQLiteRepository) ListFeedItems(limit int, offset int, source string, sources []string, searchQuery string) ([]domain.FeedItem, error) {
 	query := `
 		SELECT source, external_id, title, url, summary, author, score, comments_url, published_at, source_rank, metadata_json
 		FROM items
 	`
 	args := []any{}
-	conditions := make([]string, 0, 1+len(searchTerms(searchQuery)))
+	conditions := make([]string, 0, 2+len(searchTerms(searchQuery)))
 	if strings.TrimSpace(source) != "" {
 		conditions = append(conditions, `source = ?`)
 		args = append(args, source)
+	} else if len(sources) > 0 {
+		placeholders := make([]string, 0, len(sources))
+		for _, sourceKey := range sources {
+			placeholders = append(placeholders, `?`)
+			args = append(args, sourceKey)
+		}
+		conditions = append(conditions, `source IN (`+strings.Join(placeholders, `,`)+`)`)
 	}
 	for _, term := range searchTerms(searchQuery) {
 		conditions = append(conditions, `(

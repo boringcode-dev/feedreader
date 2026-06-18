@@ -1,7 +1,19 @@
 (() => {
   const root = document.documentElement;
-  const filterButtons = Array.from(document.querySelectorAll('[data-filter]'));
+  const availableSources = ['hackernews', 'github', 'huggingface'];
+  const sourceLabels = {
+    all: 'All',
+    hackernews: 'HN',
+    github: 'GH',
+    huggingface: 'HF',
+  };
+  const filterNav = document.querySelector('[data-filter-nav]');
   const controlsRow = document.querySelector('[data-controls-row]');
+  const configOpenButton = document.querySelector('[data-source-config-open]');
+  const configDialog = document.querySelector('[data-source-config-dialog]');
+  const configCloseButtons = Array.from(document.querySelectorAll('[data-source-config-close], [data-source-config-cancel]'));
+  const configSaveButton = document.querySelector('[data-source-config-save]');
+  const configOptions = Array.from(document.querySelectorAll('[data-source-option]'));
   const cardsGrid = document.querySelector('[data-card-grid]');
   const viewMoreButton = document.querySelector('[data-view-more]');
   const searchToggle = document.querySelector('[data-search-toggle]');
@@ -13,11 +25,13 @@
   const toast = document.querySelector('[data-toast]');
   const pageSize = Number(cardsGrid?.dataset.pageSize || 12);
   const searchDebounceMs = 1100;
+  const sourceConfigStorageKey = 'feedreader.sources';
   const themeStorageKey = 'feedreader.theme';
   const refreshToastStorageKey = 'feedreader.toast';
   const metaThemeColor = document.querySelector('meta[name="theme-color"]');
 
   let activeFilter = cardsGrid?.dataset.currentSource || 'all';
+  let selectedSources = loadSelectedSources();
   let activeQuery = (searchInput?.value || '').trim();
   let searchOpen = Boolean(activeQuery);
   let loadedCount = cardsGrid ? cardsGrid.querySelectorAll('.item-card').length : 0;
@@ -36,13 +50,66 @@
     </article>
   `;
 
-  const renderFilters = () => {
-    filterButtons.forEach((button) => {
-      const isActive = button.dataset.filter === activeFilter;
-      button.classList.toggle('is-active', isActive);
-      button.setAttribute('aria-pressed', String(isActive));
+  function normalizeSelectedSources(rawValue) {
+    const values = Array.isArray(rawValue) ? rawValue : [];
+    const seen = new Set();
+    return values.filter((value) => {
+      if (!availableSources.includes(value) || seen.has(value)) return false;
+      seen.add(value);
+      return true;
     });
-  };
+  }
+
+  function loadSelectedSources() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(sourceConfigStorageKey) || 'null');
+      const normalized = normalizeSelectedSources(parsed);
+      return normalized.length > 0 ? normalized : [...availableSources];
+    } catch {
+      return [...availableSources];
+    }
+  }
+
+  function persistSelectedSources() {
+    localStorage.setItem(sourceConfigStorageKey, JSON.stringify(selectedSources));
+  }
+
+  function shouldRestrictAllSources() {
+    return selectedSources.length > 0 && selectedSources.length < availableSources.length;
+  }
+
+  function visibleFilterKeys() {
+    if (selectedSources.length > 1) {
+      return ['all', ...selectedSources];
+    }
+    return [...selectedSources];
+  }
+
+  function renderFilters() {
+    if (!filterNav) return;
+    const keys = visibleFilterKeys();
+    filterNav.innerHTML = keys.map((key) => {
+      const isActive = key === activeFilter;
+      return `<button class="filter-button${isActive ? ' is-active' : ''}" type="button" data-filter="${key}" aria-pressed="${String(isActive)}">${sourceLabels[key] || key}</button>`;
+    }).join('');
+  }
+
+  function syncConfigOptions() {
+    configOptions.forEach((option) => {
+      option.checked = selectedSources.includes(option.value);
+    });
+  }
+
+  function currentSourceSelection() {
+    return configOptions.filter((option) => option.checked).map((option) => option.value);
+  }
+
+  function ensureActiveFilterIsVisible() {
+    const visibleKeys = visibleFilterKeys();
+    if (!visibleKeys.includes(activeFilter)) {
+      activeFilter = visibleKeys[0] || 'all';
+    }
+  }
 
   const renderViewMore = () => {
     if (!viewMoreButton) return;
@@ -124,6 +191,8 @@
     url.searchParams.set('offset', String(offset));
     if (source && source !== 'all') {
       url.searchParams.set('source', source);
+    } else if (shouldRestrictAllSources()) {
+      url.searchParams.set('sources', selectedSources.join(','));
     }
     if (query) {
       url.searchParams.set('q', query);
@@ -184,8 +253,51 @@
     }, searchDebounceMs);
   };
 
-  filterButtons.forEach((button) => {
-    button.addEventListener('click', async () => {
+  async function refetchCurrentView() {
+    loadedCount = 0;
+    ensureActiveFilterIsVisible();
+    renderFilters();
+    renderSearch();
+    updateURL();
+    await fetchItems({ source: activeFilter, query: activeQuery, offset: 0, append: false });
+  }
+
+  function openConfigDialog() {
+    syncConfigOptions();
+    if (typeof configDialog?.showModal === 'function' && !configDialog.open) {
+      configDialog.showModal();
+      return;
+    }
+    if (configDialog) {
+      configDialog.setAttribute('open', 'open');
+    }
+  }
+
+  function closeConfigDialog() {
+    if (configDialog?.open && typeof configDialog.close === 'function') {
+      configDialog.close();
+      return;
+    }
+    configDialog?.removeAttribute('open');
+  }
+
+  async function applySelectedSources(nextSources) {
+    const normalized = normalizeSelectedSources(nextSources);
+    if (normalized.length === 0) {
+      showToast('Select at least one source', 'error');
+      return;
+    }
+    selectedSources = normalized;
+    persistSelectedSources();
+    syncConfigOptions();
+    closeConfigDialog();
+    await refetchCurrentView();
+  }
+
+  if (filterNav) {
+    filterNav.addEventListener('click', async (event) => {
+      const button = event.target.closest('[data-filter]');
+      if (!button) return;
       const nextFilter = button.dataset.filter || 'all';
       if (nextFilter === activeFilter) return;
       cancelPendingSearch();
@@ -202,7 +314,44 @@
         showToast('Failed to load feed', 'error');
       }
     });
+  }
+
+  if (configOpenButton) {
+    configOpenButton.addEventListener('click', () => {
+      openConfigDialog();
+    });
+  }
+
+  configCloseButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      closeConfigDialog();
+    });
   });
+
+  if (configSaveButton) {
+    configSaveButton.addEventListener('click', async () => {
+      try {
+        await applySelectedSources(currentSourceSelection());
+      } catch (error) {
+        showToast('Failed to apply source settings', 'error');
+      }
+    });
+  }
+
+  if (configDialog) {
+    configDialog.addEventListener('cancel', (event) => {
+      event.preventDefault();
+      closeConfigDialog();
+    });
+  }
+
+  if (filterNav) {
+    filterNav.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' && document.activeElement?.dataset?.filter) {
+        document.activeElement.click();
+      }
+    });
+  }
 
   if (searchToggle) {
     searchToggle.addEventListener('click', async () => {
@@ -317,9 +466,20 @@
     showToast(pendingToast, 'success');
   }
 
+  syncConfigOptions();
+  const shouldBootstrapRefetch = activeFilter === 'all'
+    ? selectedSources.length !== availableSources.length
+    : !selectedSources.includes(activeFilter);
+  ensureActiveFilterIsVisible();
   renderFilters();
   renderSearch();
   renderViewMore();
+
+  if (shouldBootstrapRefetch) {
+    refetchCurrentView().catch(() => {
+      showToast('Failed to load configured sources', 'error');
+    });
+  }
 
   function hostLabel(rawURL) {
     try {

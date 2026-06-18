@@ -32,9 +32,23 @@
 - **Persistent local storage** with SQLite
 - **Incremental fetch model** that keeps older items in the database
 - **Server-backed incremental loading**: first page loads 12 items, filters and search trigger fresh queries, and `View more` appends more items in place
+- **Source-aware card summaries**
+  - Hacker News cards show **points** and **comments**
+  - GitHub cards show **stars**, **today's stars**, and **forks**
+  - Hugging Face cards show **upvotes**
+- **Responsive, minimalist UI** with:
+  - source filters
+  - dark/light mode
+  - inline expanding search
+  - refresh control
+  - source configuration dialog
+- **Configurable visible sources** stored in `localStorage`
+  - choose which source buttons are shown
+  - when 2+ sources are enabled, `All` stays visible and aggregates over the enabled set
+  - when exactly 1 source is enabled, only that source button is shown
+- **Debounced client-side search UX** backed by the server API
 - **Scheduled refresh** every 3 hours on wall-clock boundaries in UTC+7
 - **Manual refresh** from the UI
-- **Responsive, minimalist UI** with source filters and dark/light mode
 - **PWA-ready assets** including manifest, service worker, and touch icons
 - **Docker deployment** with reverse-proxy-friendly HTTP service
 
@@ -106,6 +120,8 @@ internal/sources/       upstream source adapters
 internal/web/           HTTP handlers and page rendering
 web/templates/          HTML templates
 web/static/             CSS, JS, icons, PWA assets
+docs/assets/            README screenshots and supporting images
+docs/implementation-notes.md  UI/API/state behavior notes
 ```
 
 ---
@@ -191,6 +207,7 @@ Returns feed items for incremental loading.
 
 Query params:
 - `source` — optional source filter (`hackernews`, `github`, `huggingface`)
+- `sources` — optional comma-separated aggregate source set used when the client wants the `All` view scoped to enabled sources (for example `hackernews,github`)
 - `q` — optional case-insensitive search query across title, summary, author, URL host/path, and stored metadata
 - `limit` — page size
 - `offset` — pagination offset
@@ -209,6 +226,37 @@ Each fetch:
 - preserves older items already in the database
 
 The UI/API render items from the full stored set, ordered by article date descending.
+
+Presentation-layer note:
+
+- the source adapters persist raw metadata into `metadata_json`
+- the card-building layer turns that metadata into user-visible summary lines
+- current rendered metrics are:
+  - Hacker News: points and comments
+  - GitHub: stars, today, forks
+  - Hugging Face Papers: upvotes
+
+---
+
+## UI behavior
+
+### Search
+
+- the search control expands inline in the header
+- clicking the search icon focuses the input
+- the input renders at `16px` to avoid common iOS Safari auto-zoom behavior
+- typing is debounced before hitting the API
+- closing the search control clears the query and resets the feed
+
+### Source configuration
+
+- the configure button opens a dialog that lets the user choose visible sources
+- selected sources are stored in `localStorage` under `feedreader.sources`
+- if **2 or more** sources are enabled, the filter bar shows:
+  - `All`
+  - each enabled source
+- if **exactly 1** source is enabled, the filter bar shows only that source
+- the `All` view aggregates only over the enabled source set, not over disabled sources
 
 ---
 

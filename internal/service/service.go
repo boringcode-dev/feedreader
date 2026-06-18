@@ -123,12 +123,12 @@ func (s *FeedService) Dashboard(limit int) ([]domain.SourceSnapshot, error) {
 	return snapshots, nil
 }
 
-func (s *FeedService) FeedItems(limit int, offset int, source string, searchQuery string) ([]domain.FeedItem, bool, error) {
+func (s *FeedService) FeedItems(limit int, offset int, source string, sources []string, searchQuery string) ([]domain.FeedItem, bool, error) {
 	fetchLimit := limit
 	if fetchLimit > 0 {
 		fetchLimit = limit + 1
 	}
-	items, err := s.repo.ListFeedItems(fetchLimit, offset, source, searchQuery)
+	items, err := s.repo.ListFeedItems(fetchLimit, offset, source, sources, searchQuery)
 	if err != nil {
 		return nil, false, err
 	}

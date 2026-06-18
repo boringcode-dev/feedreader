@@ -68,7 +68,7 @@ func TestListFeedItemsSearchAndPagination(t *testing.T) {
 		t.Fatalf("save huggingface snapshot: %v", err)
 	}
 
-	vectorItems, err := repo.ListFeedItems(10, 0, "", "vector")
+	vectorItems, err := repo.ListFeedItems(10, 0, "", nil, "vector")
 	if err != nil {
 		t.Fatalf("search vector: %v", err)
 	}
@@ -79,7 +79,18 @@ func TestListFeedItemsSearchAndPagination(t *testing.T) {
 		t.Fatalf("unexpected vector ordering: %#v", []string{vectorItems[0].ExternalID, vectorItems[1].ExternalID})
 	}
 
-	githubVectorItems, err := repo.ListFeedItems(10, 0, "github", "vector")
+	selectedSourcesItems, err := repo.ListFeedItems(10, 0, "", []string{"github", "huggingface"}, "")
+	if err != nil {
+		t.Fatalf("selected sources: %v", err)
+	}
+	if len(selectedSourcesItems) != 3 {
+		t.Fatalf("expected 3 selected-source items, got %d", len(selectedSourcesItems))
+	}
+	if selectedSourcesItems[0].ExternalID != "paper-1" || selectedSourcesItems[1].ExternalID != "owner/graph-scout" || selectedSourcesItems[2].ExternalID != "owner/search-agent" {
+		t.Fatalf("unexpected selected-source ordering: %#v", []string{selectedSourcesItems[0].ExternalID, selectedSourcesItems[1].ExternalID, selectedSourcesItems[2].ExternalID})
+	}
+
+	githubVectorItems, err := repo.ListFeedItems(10, 0, "github", nil, "vector")
 	if err != nil {
 		t.Fatalf("search github vector: %v", err)
 	}
@@ -87,7 +98,7 @@ func TestListFeedItemsSearchAndPagination(t *testing.T) {
 		t.Fatalf("unexpected github vector results: %#v", githubVectorItems)
 	}
 
-	authorItems, err := repo.ListFeedItems(10, 0, "", "jane")
+	authorItems, err := repo.ListFeedItems(10, 0, "", nil, "jane")
 	if err != nil {
 		t.Fatalf("search author: %v", err)
 	}
@@ -95,7 +106,7 @@ func TestListFeedItemsSearchAndPagination(t *testing.T) {
 		t.Fatalf("unexpected author results: %#v", authorItems)
 	}
 
-	pagedItems, err := repo.ListFeedItems(1, 1, "", "vector")
+	pagedItems, err := repo.ListFeedItems(1, 1, "", nil, "vector")
 	if err != nil {
 		t.Fatalf("search vector page 2: %v", err)
 	}
@@ -103,7 +114,7 @@ func TestListFeedItemsSearchAndPagination(t *testing.T) {
 		t.Fatalf("unexpected paged results: %#v", pagedItems)
 	}
 
-	multiTermItems, err := repo.ListFeedItems(10, 0, "", "vector research")
+	multiTermItems, err := repo.ListFeedItems(10, 0, "", nil, "vector research")
 	if err != nil {
 		t.Fatalf("search vector research: %v", err)
 	}

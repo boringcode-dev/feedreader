@@ -89,7 +89,7 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 	if querySource == "all" {
 		querySource = ""
 	}
-	items, hasNext, err := a.service.FeedItems(pageSize, 0, querySource, searchQuery)
+	items, hasNext, err := a.service.FeedItems(pageSize, 0, querySource, nil, searchQuery)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -130,6 +130,7 @@ func (a *App) healthz(w http.ResponseWriter, r *http.Request) {
 func (a *App) itemsAPI(w http.ResponseWriter, r *http.Request) {
 	source := normalizeSource(r.URL.Query().Get("source"))
 	searchQuery := normalizeSearchQuery(r.URL.Query().Get("q"))
+	selectedSources := normalizeSourceList(r.URL.Query().Get("sources"))
 	limit := parsePositiveInt(r.URL.Query().Get("limit"), pageSize)
 	if limit > 100 {
 		limit = 100
@@ -139,7 +140,7 @@ func (a *App) itemsAPI(w http.ResponseWriter, r *http.Request) {
 	if querySource == "all" {
 		querySource = ""
 	}
-	items, hasNext, err := a.service.FeedItems(limit, offset, querySource, searchQuery)
+	items, hasNext, err := a.service.FeedItems(limit, offset, querySource, selectedSources, searchQuery)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -159,6 +160,7 @@ func (a *App) itemsAPI(w http.ResponseWriter, r *http.Request) {
 	payload := map[string]any{
 		"generated_at": time.Now().UTC().Format(time.RFC3339Nano),
 		"source":       source,
+		"sources":      selectedSources,
 		"query":        searchQuery,
 		"offset":       offset,
 		"limit":        limit,
@@ -225,6 +227,27 @@ func normalizeSource(raw string) string {
 	default:
 		return "all"
 	}
+}
+
+func normalizeSourceList(raw string) []string {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	seen := map[string]struct{}{}
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		normalized := normalizeSource(part)
+		if normalized == "all" {
+			continue
+		}
+		if _, exists := seen[normalized]; exists {
+			continue
+		}
+		seen[normalized] = struct{}{}
+		out = append(out, normalized)
+	}
+	return out
 }
 
 func normalizeSearchQuery(raw string) string {
