@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>feedreader</title>
+    <meta name="description" content="Tiny private feed reader for Hacker News, GitHub Trending, and Hugging Face Papers." />
+    <meta name="theme-color" content="#111e2c" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#111e2c" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#e1ebf7" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="feedreader" />
+    <link rel="manifest" href="/site.webmanifest?v=6" />
+    <link rel="icon" href="/favicon.svg?v=6" sizes="any" type="image/svg+xml" />
+    <link rel="shortcut icon" href="/favicon.svg?v=6" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=6" />
+    <link rel="stylesheet" href="/static/style.css?v=7" />
+    <script src="/static/app.js?v=7" defer></script>
+  </head>
+  <body>
+    <header class="shell page-header">
+      <div class="toast" data-toast role="status" aria-live="polite"></div>
+      <div class="header-top">
+        <h1 class="brand">feedreader</h1>
+        <div class="header-actions">
+          <button class="icon-button refresh-button" type="button" data-refresh-button aria-label="Refresh feed" title="Refresh feed">
+            <svg class="theme-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/>
+              <path d="M20 4v5h-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/>
+            </svg>
+          </button>
+          <button class="theme-toggle icon-button" type="button" data-theme-toggle aria-label="Switch to light mode" title="Toggle color mode">
+            <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20.9 14.1A8.5 8.5 0 0 1 9.9 3.1a.75.75 0 0 0-.88-.96A9.5 9.5 0 1 0 21.86 15a.75.75 0 0 0-.96-.89Z" fill="currentColor"/>
+            </svg>
+            <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 4a1 1 0 0 1 1 1v1.2a1 1 0 1 1-2 0V5a1 1 0 0 1 1-1Zm0 12.8a4.8 4.8 0 1 0 0-9.6a4.8 4.8 0 0 0 0 9.6ZM5 11a1 1 0 1 1 0 2H3.8a1 1 0 1 1 0-2H5Zm15.2 0a1 1 0 1 1 0 2H19a1 1 0 1 1 0-2h1.2ZM7.05 6.64a1 1 0 0 1 1.41 0l.85.85a1 1 0 0 1-1.41 1.42l-.85-.86a1 1 0 0 1 0-1.41Zm8.79 8.79a1 1 0 0 1 1.41 0l.86.85a1 1 0 0 1-1.42 1.42l-.85-.86a1 1 0 0 1 0-1.41ZM8.46 15.43a1 1 0 0 1 0 1.41l-.85.86a1 1 0 1 1-1.42-1.42l.86-.85a1 1 0 0 1 1.41 0Zm8.79-8.79a1 1 0 0 1 0 1.41l-.86.86a1 1 0 1 1-1.41-1.42l.85-.85a1 1 0 0 1 1.42 0ZM12 17.8a1 1 0 0 1 1 1V20a1 1 0 1 1-2 0v-1.2a1 1 0 0 1 1-1Z" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <nav class="segmented" aria-label="Source filters">
+        {{range $idx, $filter := .SourceFilters}}
+        <button class="filter-button{{if eq $idx 0}} is-active{{end}}" type="button" data-filter="{{$filter.Key}}">
+          {{$filter.Label}}
+        </button>
+        {{end}}
+      </nav>
+    </header>
+
+    {{if .Errors}}
+    <section class="shell error-stack">
+      {{range .Errors}}
+      <div class="error-banner">{{.Label}}: {{.Error}}</div>
+      {{end}}
+    </section>
+    {{end}}
+
+    <main class="shell page-body">
+      {{if .Cards}}
+      <section class="cards-grid" data-card-grid data-initial-visible="{{.InitialVisibleCards}}">
+        {{range .Cards}}
+        <article class="item-card" data-source="{{.Source}}">
+          <h2 class="item-title">
+            <span class="item-index">{{.Index}}.</span>
+            <a href="{{.URL}}" target="_blank" rel="noreferrer">{{.Title}}</a>
+          </h2>
+          {{if .Brief}}
+          <p class="item-brief">{{.Brief}}</p>
+          {{end}}
+          <p class="item-host">{{.Host}}</p>
+        </article>
+        {{end}}
+      </section>
+
+      <div class="footer-actions">
+        <button class="view-more" type="button" data-view-more>View more</button>
+      </div>
+      <footer class="site-footer">
+        <p>© {{.CurrentYear}} feedreader · by Phat Pham</p>
+      </footer>
+      {{else}}
+      <div class="empty-state">No items yet. The scheduler will populate the feed automatically.</div>
+      {{end}}
+    </main>
+  </body>
+</html>
