@@ -1,86 +1,97 @@
 (() => {
   const root = document.documentElement;
-  const availableSources = ['hackernews', 'github', 'huggingface', 'alphaxiv'];
+  const availableSources = ["hackernews", "github", "huggingface", "alphaxiv"];
   const sourceLabels = {
-    all: 'All enabled sources',
-    hackernews: 'Hacker News',
-    github: 'GitHub Trending',
-    huggingface: 'Hugging Face Papers Trending',
-    alphaxiv: 'alphaXiv',
+    all: "All enabled sources",
+    hackernews: "Hacker News",
+    github: "GitHub Trending",
+    huggingface: "Hugging Face Papers Trending",
+    alphaxiv: "alphaXiv",
   };
   const sourceIconPaths = {
-    hackernews: '/static/source-icons/hackernews.svg',
-    github: '/static/source-icons/github.svg',
-    huggingface: '/static/source-icons/huggingface.svg',
-    alphaxiv: '/static/source-icons/alphaxiv.png',
+    hackernews: "/static/source-icons/hackernews.svg",
+    github: "/static/source-icons/github.svg",
+    huggingface: "/static/source-icons/huggingface.svg",
+    alphaxiv: "/static/source-icons/alphaxiv.png",
   };
-  const filterNav = document.querySelector('[data-filter-nav]');
-  const controlsRow = document.querySelector('[data-controls-row]');
-  const configOpenButton = document.querySelector('[data-source-config-open]');
-  const configDialog = document.querySelector('[data-source-config-dialog]');
-  const configCloseButtons = Array.from(document.querySelectorAll('[data-source-config-close], [data-source-config-cancel]'));
-  const configSaveButton = document.querySelector('[data-source-config-save]');
-  const configOptions = Array.from(document.querySelectorAll('[data-source-option]'));
-  const cardsGrid = document.querySelector('[data-card-grid]');
-  const emptyState = document.querySelector('[data-empty-state]');
-  const footerActions = document.querySelector('[data-footer-actions]');
-  const viewMoreButton = document.querySelector('[data-view-more]');
-  const searchToggle = document.querySelector('[data-search-toggle]');
-  const searchForm = document.querySelector('[data-search-form]');
-  const searchInput = document.querySelector('[data-search-input]');
-  const searchSourceInput = document.querySelector('[data-search-source]');
-  const refreshButton = document.querySelector('[data-refresh-button]');
-  const themeToggle = document.querySelector('[data-theme-toggle]');
-  const toast = document.querySelector('[data-toast]');
+  const filterNav = document.querySelector("[data-filter-nav]");
+  const controlsRow = document.querySelector("[data-controls-row]");
+  const configOpenButton = document.querySelector("[data-source-config-open]");
+  const configDialog = document.querySelector("[data-source-config-dialog]");
+  const configCloseButtons = Array.from(
+    document.querySelectorAll(
+      "[data-source-config-close], [data-source-config-cancel]",
+    ),
+  );
+  const configSaveButton = document.querySelector("[data-source-config-save]");
+  const configOptions = Array.from(
+    document.querySelectorAll("[data-source-option]"),
+  );
+  const connectionIndicator = document.querySelector(
+    "[data-connection-indicator]",
+  );
+  const cardsGrid = document.querySelector("[data-card-grid]");
+  const emptyState = document.querySelector("[data-empty-state]");
+  const footerActions = document.querySelector("[data-footer-actions]");
+  const viewMoreButton = document.querySelector("[data-view-more]");
+  const searchToggle = document.querySelector("[data-search-toggle]");
+  const searchForm = document.querySelector("[data-search-form]");
+  const searchInput = document.querySelector("[data-search-input]");
+  const searchSourceInput = document.querySelector("[data-search-source]");
+  const refreshButton = document.querySelector("[data-refresh-button]");
+  const themeToggle = document.querySelector("[data-theme-toggle]");
+  const toast = document.querySelector("[data-toast]");
   const pageSize = Number(cardsGrid?.dataset.pageSize || 12);
   const searchDebounceMs = 1100;
-  const sourceConfigStorageKey = 'feedreader.sources';
-  const visitedLinksStorageKey = 'feedreader.visited';
+  const sourceConfigStorageKey = "feedreader.sources";
+  const visitedLinksStorageKey = "feedreader.visited";
   const visitedLinksLimit = 500;
-  const themeStorageKey = 'feedreader.theme';
+  const themeStorageKey = "feedreader.theme";
   const metaThemeColor = document.querySelector('meta[name="theme-color"]');
 
-  let activeFilter = cardsGrid?.dataset.currentSource || 'all';
+  let activeFilter = cardsGrid?.dataset.currentSource || "all";
   let selectedSources = loadSelectedSources();
   let visitedLinks = loadVisitedLinks();
-  let activeQuery = (searchInput?.value || '').trim();
+  let activeQuery = (searchInput?.value || "").trim();
   let searchOpen = Boolean(activeQuery);
-  let loadedCount = cardsGrid ? cardsGrid.querySelectorAll('.item-card').length : 0;
-  let hasNext = cardsGrid?.dataset.hasNext === 'true';
+  let loadedCount = cardsGrid
+    ? cardsGrid.querySelectorAll(".item-card").length
+    : 0;
+  let hasNext = cardsGrid?.dataset.hasNext === "true";
   let searchTimer = null;
   let requestSequence = 0;
   let refreshInFlight = false;
   let feedLoading = false;
-  let feedLoadingMode = '';
-  let activeToastKind = '';
+  let feedLoadingMode = "";
+  let activeToastKind = "";
   let browserOnline = navigator.onLine;
   let offlineViewUnavailable = false;
   let reconnectRefetchInFlight = false;
 
   function emptyMessageForState({ source, query }) {
     if (offlineViewUnavailable) {
-      return 'Offline and no cached items are available for this view yet.';
+      return "Offline and no cached items are available for this view yet.";
     }
     if (query) {
-      if (source && source !== 'all') {
-        return `No matches found in ${sourceLabels[source] || 'this source'}. Try a different query.`;
+      if (source && source !== "all") {
+        return `No matches found in ${sourceLabels[source] || "this source"}. Try a different query.`;
       }
-      return 'No matches found. Try a different query.';
+      return "No matches found. Try a different query.";
     }
-    if (source && source !== 'all') {
-      return `No items found in ${sourceLabels[source] || 'this source'} right now.`;
+    if (source && source !== "all") {
+      return `No items found in ${sourceLabels[source] || "this source"} right now.`;
     }
-    return 'No items yet. The scheduler will populate the feed automatically.';
+    return "No items yet. The scheduler will populate the feed automatically.";
   }
 
   const cardTemplate = (item) => `
-    <article class="item-card" data-source="${escapeHtml(item.source || '')}">
+    <article class="item-card" data-source="${escapeHtml(item.source || "")}">
       <h2 class="item-title">
-        <span class="item-index">${escapeHtml(item.index ?? '')}.</span>
-        <a href="${escapeAttr(item.url || '#')}" target="_blank" rel="noreferrer">${escapeHtml(item.title || '')}</a>
+        <span class="item-index">${escapeHtml(item.index ?? "")}.</span>
+        <a href="${escapeAttr(item.url || "#")}" target="_blank" rel="noreferrer">${escapeHtml(item.title || "")}</a>
       </h2>
-      ${item.brief ? `<p class="item-brief"><span class="item-brief-text">${escapeHtml(item.brief)}</span></p>` : ''}
-      <p class="item-host"><img class="source-icon-image source-icon-image--host source-icon-image--${escapeAttr(item.source || '')}" src="${escapeAttr(sourceIconPaths[item.source] || '')}" alt="" aria-hidden="true" /><span class="item-host-text">${escapeHtml(item.host || hostLabel(item.url || ''))}</span></p>
+      ${item.brief ? `<p class="item-brief"><span class="item-brief-text">${escapeHtml(item.brief)}</span></p>` : ""}
+      <p class="item-host"><img class="source-icon-image source-icon-image--host source-icon-image--${escapeAttr(item.source || "")}" src="${escapeAttr(sourceIconPaths[item.source] || "")}" alt="" aria-hidden="true" /><span class="item-host-text">${escapeHtml(item.host || hostLabel(item.url || ""))}</span></p>
     </article>
   `;
 
@@ -95,8 +106,8 @@
   }
 
   function normalizeVisitedHref(rawValue) {
-    const value = String(rawValue || '').trim();
-    if (!value) return '';
+    const value = String(rawValue || "").trim();
+    if (!value) return "";
     try {
       return new URL(value, window.location.origin).toString();
     } catch {
@@ -106,7 +117,9 @@
 
   function loadVisitedLinks() {
     try {
-      const parsed = JSON.parse(localStorage.getItem(visitedLinksStorageKey) || 'null');
+      const parsed = JSON.parse(
+        localStorage.getItem(visitedLinksStorageKey) || "null",
+      );
       const values = Array.isArray(parsed) ? parsed : [];
       const seen = new Set();
       return values
@@ -123,15 +136,21 @@
   }
 
   function persistVisitedLinks() {
-    localStorage.setItem(visitedLinksStorageKey, JSON.stringify(visitedLinks.slice(-visitedLinksLimit)));
+    localStorage.setItem(
+      visitedLinksStorageKey,
+      JSON.stringify(visitedLinks.slice(-visitedLinksLimit)),
+    );
   }
 
   function applyVisitedLinkState() {
     if (!cardsGrid) return;
     const visitedSet = new Set(visitedLinks);
-    cardsGrid.querySelectorAll('.item-title a').forEach((link) => {
+    cardsGrid.querySelectorAll(".item-title a").forEach((link) => {
       const normalized = normalizeVisitedHref(link.href);
-      link.classList.toggle('is-visited', normalized !== '' && visitedSet.has(normalized));
+      link.classList.toggle(
+        "is-visited",
+        normalized !== "" && visitedSet.has(normalized),
+      );
     });
   }
 
@@ -147,7 +166,9 @@
 
   function loadSelectedSources() {
     try {
-      const parsed = JSON.parse(localStorage.getItem(sourceConfigStorageKey) || 'null');
+      const parsed = JSON.parse(
+        localStorage.getItem(sourceConfigStorageKey) || "null",
+      );
       const normalized = normalizeSelectedSources(parsed);
       return normalized.length > 0 ? normalized : [...availableSources];
     } catch {
@@ -156,16 +177,22 @@
   }
 
   function persistSelectedSources() {
-    localStorage.setItem(sourceConfigStorageKey, JSON.stringify(selectedSources));
+    localStorage.setItem(
+      sourceConfigStorageKey,
+      JSON.stringify(selectedSources),
+    );
   }
 
   function shouldRestrictAllSources() {
-    return selectedSources.length > 0 && selectedSources.length < availableSources.length;
+    return (
+      selectedSources.length > 0 &&
+      selectedSources.length < availableSources.length
+    );
   }
 
   function visibleFilterKeys() {
     if (selectedSources.length > 1) {
-      return ['all', ...selectedSources];
+      return ["all", ...selectedSources];
     }
     return [...selectedSources];
   }
@@ -173,13 +200,15 @@
   function renderFilters() {
     if (!filterNav) return;
     const keys = visibleFilterKeys();
-    filterNav.innerHTML = keys.map((key) => {
-      const isActive = key === activeFilter;
-      if (key === 'all') {
-        return `<button class="filter-button${isActive ? ' is-active' : ''}" type="button" data-filter="${key}" aria-pressed="${String(isActive)}" aria-label="${escapeAttr(sourceLabels[key] || key)}" title="${escapeAttr(sourceLabels[key] || key)}">All</button>`;
-      }
-      return `<button class="filter-button filter-button--icon${isActive ? ' is-active' : ''}" type="button" data-filter="${key}" aria-pressed="${String(isActive)}" aria-label="${escapeAttr(sourceLabels[key] || key)}" title="${escapeAttr(sourceLabels[key] || key)}"><img class="source-icon-image source-icon-image--filter source-icon-image--${escapeAttr(key)}" src="${escapeAttr(sourceIconPaths[key] || '')}" alt="" aria-hidden="true" /></button>`;
-    }).join(''); // Fixed local source definitions only; all interpolated values are escaped above.
+    filterNav.innerHTML = keys
+      .map((key) => {
+        const isActive = key === activeFilter;
+        if (key === "all") {
+          return `<button class="filter-button${isActive ? " is-active" : ""}" type="button" data-filter="${key}" aria-pressed="${String(isActive)}" aria-label="${escapeAttr(sourceLabels[key] || key)}" title="${escapeAttr(sourceLabels[key] || key)}">All</button>`;
+        }
+        return `<button class="filter-button filter-button--icon${isActive ? " is-active" : ""}" type="button" data-filter="${key}" aria-pressed="${String(isActive)}" aria-label="${escapeAttr(sourceLabels[key] || key)}" title="${escapeAttr(sourceLabels[key] || key)}"><img class="source-icon-image source-icon-image--filter source-icon-image--${escapeAttr(key)}" src="${escapeAttr(sourceIconPaths[key] || "")}" alt="" aria-hidden="true" /></button>`;
+      })
+      .join(""); // Fixed local source definitions only; all interpolated values are escaped above.
   }
 
   function syncConfigOptions() {
@@ -189,52 +218,74 @@
   }
 
   function currentSourceSelection() {
-    return configOptions.filter((option) => option.checked).map((option) => option.value);
+    return configOptions
+      .filter((option) => option.checked)
+      .map((option) => option.value);
   }
 
   function ensureActiveFilterIsVisible() {
     const visibleKeys = visibleFilterKeys();
     if (!visibleKeys.includes(activeFilter)) {
-      activeFilter = visibleKeys[0] || 'all';
+      activeFilter = visibleKeys[0] || "all";
     }
   }
+
+  const renderConnectionIndicator = () => {
+    if (!connectionIndicator) return;
+    connectionIndicator.classList.toggle("is-hidden", browserOnline);
+    connectionIndicator.setAttribute("aria-hidden", String(browserOnline));
+  };
+
+  const syncConnectivityState = () => {
+    browserOnline = navigator.onLine;
+    renderConnectionIndicator();
+  };
 
   const renderViewMore = () => {
     const showActions = loadedCount > 0;
     if (footerActions) {
-      footerActions.classList.toggle('is-hidden', !showActions);
+      footerActions.classList.toggle("is-hidden", !showActions);
     }
     if (!viewMoreButton) return;
     const showButton = hasNext && loadedCount > 0;
-    const loadingMore = feedLoading && feedLoadingMode === 'append';
+    const loadingMore = feedLoading && feedLoadingMode === "append";
     viewMoreButton.hidden = !showButton;
     viewMoreButton.disabled = !showButton || refreshInFlight || feedLoading;
-    viewMoreButton.textContent = loadingMore ? 'Loading…' : 'View more';
+    viewMoreButton.textContent = loadingMore ? "Loading…" : "View more";
   };
 
   const renderFeedBody = () => {
     if (cardsGrid) {
       const showCards = loadedCount > 0;
-      cardsGrid.classList.toggle('is-hidden', !showCards);
-      cardsGrid.classList.toggle('is-loading', feedLoading && feedLoadingMode !== 'append' && showCards);
-      cardsGrid.setAttribute('aria-busy', String(feedLoading));
+      cardsGrid.classList.toggle("is-hidden", !showCards);
+      cardsGrid.classList.toggle(
+        "is-loading",
+        feedLoading && feedLoadingMode !== "append" && showCards,
+      );
+      cardsGrid.setAttribute("aria-busy", String(feedLoading));
     }
     if (emptyState) {
-      emptyState.textContent = emptyMessageForState({ source: activeFilter, query: activeQuery });
-      emptyState.classList.toggle('is-hidden', feedLoading || loadedCount > 0);
+      emptyState.textContent = emptyMessageForState({
+        source: activeFilter,
+        query: activeQuery,
+      });
+      emptyState.classList.toggle("is-hidden", feedLoading || loadedCount > 0);
     }
     renderViewMore();
   };
 
-  const setFeedLoading = (active, { mode = 'replace', message = '' } = {}) => {
+  const setFeedLoading = (
+    active,
+    { mode = "replace", message = "", showLoadingToast = true } = {},
+  ) => {
     feedLoading = active;
-    feedLoadingMode = active ? mode : '';
+    feedLoadingMode = active ? mode : "";
     if (active) {
-      showToast(message, 'loading', { persistent: true });
-    } else if (!browserOnline) {
-      showOfflineToast();
-    } else {
-      hideToast({ onlyKind: 'loading' });
+      if (showLoadingToast) {
+        showToast(message, "loading", { persistent: true });
+      }
+    } else if (showLoadingToast) {
+      hideToast({ onlyKind: "loading" });
     }
     renderFeedBody();
   };
@@ -242,36 +293,42 @@
   const renderSearch = () => {
     const isVisible = searchOpen || Boolean(activeQuery);
     if (searchForm) {
-      searchForm.classList.toggle('is-open', isVisible);
-      searchForm.setAttribute('aria-hidden', String(!isVisible));
+      searchForm.classList.toggle("is-open", isVisible);
+      searchForm.setAttribute("aria-hidden", String(!isVisible));
     }
     if (searchToggle) {
-      searchToggle.classList.toggle('is-active', isVisible);
-      searchToggle.setAttribute('aria-expanded', String(isVisible));
-      searchToggle.setAttribute('aria-label', isVisible ? 'Close search' : 'Search feed');
-      searchToggle.setAttribute('title', isVisible ? 'Close search' : 'Search feed');
+      searchToggle.classList.toggle("is-active", isVisible);
+      searchToggle.setAttribute("aria-expanded", String(isVisible));
+      searchToggle.setAttribute(
+        "aria-label",
+        isVisible ? "Close search" : "Search feed",
+      );
+      searchToggle.setAttribute(
+        "title",
+        isVisible ? "Close search" : "Search feed",
+      );
     }
     if (searchSourceInput) {
-      searchSourceInput.value = activeFilter === 'all' ? '' : activeFilter;
+      searchSourceInput.value = activeFilter === "all" ? "" : activeFilter;
     }
     if (controlsRow) {
-      controlsRow.classList.toggle('is-search-active', isVisible);
+      controlsRow.classList.toggle("is-search-active", isVisible);
     }
   };
 
   const updateURL = () => {
     const url = new URL(window.location.href);
-    if (activeFilter === 'all') {
-      url.searchParams.delete('source');
+    if (activeFilter === "all") {
+      url.searchParams.delete("source");
     } else {
-      url.searchParams.set('source', activeFilter);
+      url.searchParams.set("source", activeFilter);
     }
     if (activeQuery) {
-      url.searchParams.set('q', activeQuery);
+      url.searchParams.set("q", activeQuery);
     } else {
-      url.searchParams.delete('q');
+      url.searchParams.delete("q");
     }
-    history.replaceState({}, '', `${url.pathname}${url.search}`);
+    history.replaceState({}, "", `${url.pathname}${url.search}`);
   };
 
   let toastTimer = null;
@@ -284,22 +341,31 @@
       window.clearTimeout(toastTimer);
       toastTimer = null;
     }
-    toast.classList.remove('is-visible', 'is-error', 'is-loading', 'is-offline');
-    toast.textContent = '';
-    activeToastKind = '';
+    toast.classList.remove(
+      "is-visible",
+      "is-error",
+      "is-loading",
+      "is-offline",
+    );
+    toast.textContent = "";
+    activeToastKind = "";
   };
 
-  const showToast = (message, kind = 'success', { persistent = false } = {}) => {
+  const showToast = (
+    message,
+    kind = "success",
+    { persistent = false } = {},
+  ) => {
     if (!toast) return;
     if (toastTimer) {
       window.clearTimeout(toastTimer);
       toastTimer = null;
     }
     toast.textContent = message;
-    toast.classList.toggle('is-error', kind === 'error');
-    toast.classList.toggle('is-loading', kind === 'loading');
-    toast.classList.toggle('is-offline', kind === 'offline');
-    toast.classList.add('is-visible');
+    toast.classList.toggle("is-error", kind === "error");
+    toast.classList.toggle("is-loading", kind === "loading");
+    toast.classList.toggle("is-offline", kind === "offline");
+    toast.classList.add("is-visible");
     activeToastKind = kind;
     if (persistent) {
       return;
@@ -309,58 +375,82 @@
     }, 2200);
   };
 
-  const showOfflineToast = () => {
-    showToast('Internet disconnected — showing cached feed when available.', 'offline', { persistent: true });
-  };
-
   const applyTheme = (theme) => {
     root.dataset.theme = theme;
     localStorage.setItem(themeStorageKey, theme);
     if (metaThemeColor) {
-      metaThemeColor.setAttribute('content', theme === 'dark' ? '#111e2c' : '#e1ebf7');
+      metaThemeColor.setAttribute(
+        "content",
+        theme === "dark" ? "#111e2c" : "#e1ebf7",
+      );
       document.querySelectorAll('meta[name="theme-color"]').forEach((node) => {
-        const media = node.getAttribute('media');
+        const media = node.getAttribute("media");
         if (!media) {
-          node.setAttribute('content', theme === 'dark' ? '#111e2c' : '#e1ebf7');
+          node.setAttribute(
+            "content",
+            theme === "dark" ? "#111e2c" : "#e1ebf7",
+          );
         }
       });
     }
     if (themeToggle) {
-      themeToggle.setAttribute('aria-label', `Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`);
-      themeToggle.setAttribute('title', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+      themeToggle.setAttribute(
+        "aria-label",
+        `Switch to ${theme === "dark" ? "light" : "dark"} mode`,
+      );
+      themeToggle.setAttribute(
+        "title",
+        theme === "dark" ? "Switch to light mode" : "Switch to dark mode",
+      );
     }
   };
 
   const setRefreshButtonLoading = (active) => {
     if (!refreshButton) return;
     refreshButton.disabled = active;
-    refreshButton.classList.toggle('is-loading', active);
-    refreshButton.setAttribute('aria-label', active ? 'Refreshing feed' : 'Refresh feed');
-    refreshButton.setAttribute('title', active ? 'Refreshing feed' : 'Refresh feed');
+    refreshButton.classList.toggle("is-loading", active);
+    refreshButton.setAttribute(
+      "aria-label",
+      active ? "Refreshing feed" : "Refresh feed",
+    );
+    refreshButton.setAttribute(
+      "title",
+      active ? "Refreshing feed" : "Refresh feed",
+    );
   };
 
-  const fetchItems = async ({ source, query, offset, append, loadingMessage }) => {
+  const fetchItems = async ({
+    source,
+    query,
+    offset,
+    append,
+    loadingMessage,
+    showLoadingToast = true,
+  }) => {
+    syncConnectivityState();
     const requestId = ++requestSequence;
     setFeedLoading(true, {
-      mode: append ? 'append' : 'replace',
-      message: loadingMessage || (append ? 'Loading more items…' : 'Loading feed…'),
+      mode: append ? "append" : "replace",
+      message:
+        loadingMessage || (append ? "Loading more items…" : "Loading feed…"),
+      showLoadingToast,
     });
 
-    const url = new URL('/api/items', window.location.origin);
-    url.searchParams.set('limit', String(pageSize));
-    url.searchParams.set('offset', String(offset));
-    if (source && source !== 'all') {
-      url.searchParams.set('source', source);
+    const url = new URL("/api/items", window.location.origin);
+    url.searchParams.set("limit", String(pageSize));
+    url.searchParams.set("offset", String(offset));
+    if (source && source !== "all") {
+      url.searchParams.set("source", source);
     } else if (shouldRestrictAllSources()) {
-      url.searchParams.set('sources', selectedSources.join(','));
+      url.searchParams.set("sources", selectedSources.join(","));
     }
     if (query) {
-      url.searchParams.set('q', query);
+      url.searchParams.set("q", query);
     }
 
     try {
       const response = await fetch(url.toString(), {
-        headers: { Accept: 'application/json' },
+        headers: { Accept: "application/json" },
       });
       if (!response.ok) {
         throw new Error(`fetch failed: ${response.status}`);
@@ -373,7 +463,6 @@
       const offlineCacheMiss = Boolean(payload.offline && payload.cache_miss);
       const items = payload.items || [];
       if (append && offlineCacheMiss) {
-        showOfflineToast();
         renderFeedBody();
         return;
       }
@@ -381,19 +470,19 @@
       offlineViewUnavailable = !append && offlineCacheMiss;
       hasNext = Boolean(payload.has_next);
       if (cardsGrid) {
-        cardsGrid.dataset.hasNext = hasNext ? 'true' : 'false';
-        cardsGrid.dataset.currentSource = source || 'all';
+        cardsGrid.dataset.hasNext = hasNext ? "true" : "false";
+        cardsGrid.dataset.currentSource = source || "all";
       }
 
       if (!append && cardsGrid) {
-        cardsGrid.innerHTML = '';
+        cardsGrid.innerHTML = "";
         loadedCount = 0;
       }
 
       if (cardsGrid) {
-        const html = items.map((item) => cardTemplate(item)).join('');
+        const html = items.map((item) => cardTemplate(item)).join("");
         if (html) {
-          cardsGrid.insertAdjacentHTML('beforeend', html); // HTML is built from escaped API fields plus fixed local icon paths.
+          cardsGrid.insertAdjacentHTML("beforeend", html); // HTML is built from escaped API fields plus fixed local icon paths.
         }
       }
       loadedCount = append ? loadedCount + items.length : items.length;
@@ -401,7 +490,7 @@
       renderFeedBody();
     } finally {
       if (requestId === requestSequence) {
-        setFeedLoading(false);
+        setFeedLoading(false, { showLoadingToast });
       }
     }
   };
@@ -413,9 +502,12 @@
     }
   };
 
-  const currentSearchInputValue = () => (searchInput?.value || '').trim();
+  const currentSearchInputValue = () => (searchInput?.value || "").trim();
 
-  const applySearch = async (nextQuery, { collapseWhenEmpty = false, loadingMessage } = {}) => {
+  const applySearch = async (
+    nextQuery,
+    { collapseWhenEmpty = false, loadingMessage } = {},
+  ) => {
     cancelPendingSearch();
     activeQuery = nextQuery;
     searchOpen = Boolean(nextQuery) || (searchOpen && !collapseWhenEmpty);
@@ -426,7 +518,8 @@
       query: activeQuery,
       offset: 0,
       append: false,
-      loadingMessage: loadingMessage || (nextQuery ? 'Searching feed…' : 'Loading feed…'),
+      loadingMessage:
+        loadingMessage || (nextQuery ? "Searching feed…" : "Loading feed…"),
     });
   };
 
@@ -436,32 +529,43 @@
     cancelPendingSearch();
     searchTimer = window.setTimeout(async () => {
       try {
-        await applySearch(currentSearchInputValue(), { loadingMessage: 'Searching feed…' });
+        await applySearch(currentSearchInputValue(), {
+          loadingMessage: "Searching feed…",
+        });
       } catch (error) {
-        showToast('Failed to search feed', 'error');
+        showToast("Failed to search feed", "error");
       }
     }, searchDebounceMs);
   };
 
-  async function refetchCurrentView({ loadingMessage = 'Loading feed…' } = {}) {
+  async function refetchCurrentView({
+    loadingMessage = "Loading feed…",
+    showLoadingToast = true,
+  } = {}) {
     ensureActiveFilterIsVisible();
     renderFilters();
     renderSearch();
     updateURL();
-    await fetchItems({ source: activeFilter, query: activeQuery, offset: 0, append: false, loadingMessage });
+    await fetchItems({
+      source: activeFilter,
+      query: activeQuery,
+      offset: 0,
+      append: false,
+      loadingMessage,
+      showLoadingToast,
+    });
   }
 
   async function refetchCurrentViewAfterReconnect() {
-    if (refreshInFlight || reconnectRefetchInFlight) {
+    syncConnectivityState();
+    if (!browserOnline || refreshInFlight || reconnectRefetchInFlight) {
       return false;
     }
     reconnectRefetchInFlight = true;
     try {
-      await refetchCurrentView({ loadingMessage: 'Internet reconnected — refreshing feed…' });
-      showToast('Feed updated', 'success');
+      await refetchCurrentView({ showLoadingToast: false });
       return true;
     } catch (error) {
-      showToast('Reconnected, but failed to refresh feed', 'error');
       return false;
     } finally {
       reconnectRefetchInFlight = false;
@@ -469,30 +573,30 @@
   }
 
   async function refreshFeedList() {
+    syncConnectivityState();
     if (refreshInFlight) {
       return false;
     }
     if (!browserOnline) {
-      showOfflineToast();
       return false;
     }
     refreshInFlight = true;
     cancelPendingSearch();
-    setFeedLoading(true, { mode: 'replace', message: 'Refreshing feed…' });
+    setFeedLoading(true, { mode: "replace", message: "Refreshing feed…" });
     setRefreshButtonLoading(true);
     renderFeedBody();
     try {
-      const response = await fetch('/api/refresh', { method: 'POST' });
+      const response = await fetch("/api/refresh", { method: "POST" });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok || !payload.ok) {
-        showToast('Refresh completed with errors', 'error');
+        showToast("Refresh completed with errors", "error");
         return false;
       }
-      await refetchCurrentView({ loadingMessage: 'Refreshing feed…' });
-      showToast('Feed refreshed', 'success');
+      await refetchCurrentView({ loadingMessage: "Refreshing feed…" });
+      showToast("Feed refreshed", "success");
       return true;
     } catch (error) {
-      showToast('Refresh failed', 'error');
+      showToast("Refresh failed", "error");
       return false;
     } finally {
       refreshInFlight = false;
@@ -504,41 +608,41 @@
 
   function openConfigDialog() {
     syncConfigOptions();
-    if (typeof configDialog?.showModal === 'function' && !configDialog.open) {
+    if (typeof configDialog?.showModal === "function" && !configDialog.open) {
       configDialog.showModal();
       return;
     }
     if (configDialog) {
-      configDialog.setAttribute('open', 'open');
+      configDialog.setAttribute("open", "open");
     }
   }
 
   function closeConfigDialog() {
-    if (configDialog?.open && typeof configDialog.close === 'function') {
+    if (configDialog?.open && typeof configDialog.close === "function") {
       configDialog.close();
       return;
     }
-    configDialog?.removeAttribute('open');
+    configDialog?.removeAttribute("open");
   }
 
   async function applySelectedSources(nextSources) {
     const normalized = normalizeSelectedSources(nextSources);
     if (normalized.length === 0) {
-      showToast('Select at least one source', 'error');
+      showToast("Select at least one source", "error");
       return;
     }
     selectedSources = normalized;
     persistSelectedSources();
     syncConfigOptions();
     closeConfigDialog();
-    await refetchCurrentView({ loadingMessage: 'Loading selected sources…' });
+    await refetchCurrentView({ loadingMessage: "Loading selected sources…" });
   }
 
   if (filterNav) {
-    filterNav.addEventListener('click', async (event) => {
-      const button = event.target.closest('[data-filter]');
+    filterNav.addEventListener("click", async (event) => {
+      const button = event.target.closest("[data-filter]");
       if (!button) return;
-      const nextFilter = button.dataset.filter || 'all';
+      const nextFilter = button.dataset.filter || "all";
       if (nextFilter === activeFilter) return;
       cancelPendingSearch();
       activeFilter = nextFilter;
@@ -553,53 +657,56 @@
           query: activeQuery,
           offset: 0,
           append: false,
-          loadingMessage: activeFilter === 'all' ? 'Loading feed…' : `Loading ${sourceLabels[activeFilter] || 'source'}…`,
+          loadingMessage:
+            activeFilter === "all"
+              ? "Loading feed…"
+              : `Loading ${sourceLabels[activeFilter] || "source"}…`,
         });
       } catch (error) {
-        showToast('Failed to load feed', 'error');
+        showToast("Failed to load feed", "error");
       }
     });
   }
 
   if (configOpenButton) {
-    configOpenButton.addEventListener('click', () => {
+    configOpenButton.addEventListener("click", () => {
       openConfigDialog();
     });
   }
 
   configCloseButtons.forEach((button) => {
-    button.addEventListener('click', () => {
+    button.addEventListener("click", () => {
       closeConfigDialog();
     });
   });
 
   if (configSaveButton) {
-    configSaveButton.addEventListener('click', async () => {
+    configSaveButton.addEventListener("click", async () => {
       try {
         await applySelectedSources(currentSourceSelection());
       } catch (error) {
-        showToast('Failed to apply source settings', 'error');
+        showToast("Failed to apply source settings", "error");
       }
     });
   }
 
   if (configDialog) {
-    configDialog.addEventListener('cancel', (event) => {
+    configDialog.addEventListener("cancel", (event) => {
       event.preventDefault();
       closeConfigDialog();
     });
   }
 
   if (filterNav) {
-    filterNav.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' && document.activeElement?.dataset?.filter) {
+    filterNav.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && document.activeElement?.dataset?.filter) {
         document.activeElement.click();
       }
     });
   }
 
   if (searchToggle) {
-    searchToggle.addEventListener('click', async () => {
+    searchToggle.addEventListener("click", async () => {
       const hasDraftOrQuery = Boolean(currentSearchInputValue() || activeQuery);
       if (!searchOpen && !hasDraftOrQuery) {
         searchOpen = true;
@@ -616,41 +723,49 @@
 
       cancelPendingSearch();
       if (searchInput) {
-        searchInput.value = '';
+        searchInput.value = "";
       }
       try {
-        await applySearch('', { collapseWhenEmpty: true, loadingMessage: 'Loading feed…' });
+        await applySearch("", {
+          collapseWhenEmpty: true,
+          loadingMessage: "Loading feed…",
+        });
       } catch (error) {
-        showToast('Failed to clear search', 'error');
+        showToast("Failed to clear search", "error");
       }
     });
   }
 
   if (searchForm) {
-    searchForm.addEventListener('submit', async (event) => {
+    searchForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       try {
-        await applySearch(currentSearchInputValue(), { loadingMessage: 'Searching feed…' });
+        await applySearch(currentSearchInputValue(), {
+          loadingMessage: "Searching feed…",
+        });
       } catch (error) {
-        showToast('Failed to search feed', 'error');
+        showToast("Failed to search feed", "error");
       }
     });
   }
 
   if (searchInput) {
-    searchInput.addEventListener('input', () => {
+    searchInput.addEventListener("input", () => {
       scheduleSearch();
     });
 
-    searchInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') {
+    searchInput.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
         event.preventDefault();
         cancelPendingSearch();
         if (searchInput) {
-          searchInput.value = '';
+          searchInput.value = "";
         }
-        applySearch('', { collapseWhenEmpty: true, loadingMessage: 'Loading feed…' }).catch(() => {
-          showToast('Failed to clear search', 'error');
+        applySearch("", {
+          collapseWhenEmpty: true,
+          loadingMessage: "Loading feed…",
+        }).catch(() => {
+          showToast("Failed to clear search", "error");
         });
         searchToggle?.focus();
       }
@@ -658,7 +773,7 @@
   }
 
   if (viewMoreButton) {
-    viewMoreButton.addEventListener('click', async () => {
+    viewMoreButton.addEventListener("click", async () => {
       if (feedLoading || refreshInFlight) return;
       viewMoreButton.disabled = true;
       try {
@@ -667,10 +782,10 @@
           query: activeQuery,
           offset: loadedCount,
           append: true,
-          loadingMessage: 'Loading more items…',
+          loadingMessage: "Loading more items…",
         });
       } catch (error) {
-        showToast('Failed to load more items', 'error');
+        showToast("Failed to load more items", "error");
       } finally {
         renderFeedBody();
       }
@@ -678,71 +793,69 @@
   }
 
   if (cardsGrid) {
-    cardsGrid.addEventListener('click', (event) => {
-      const link = event.target.closest('.item-title a');
+    cardsGrid.addEventListener("click", (event) => {
+      const link = event.target.closest(".item-title a");
       if (!link) return;
       rememberVisitedLink(link.href);
     });
   }
 
   if (refreshButton) {
-    refreshButton.addEventListener('click', async () => {
+    refreshButton.addEventListener("click", async () => {
       await refreshFeedList();
     });
   }
 
   if (themeToggle) {
-    themeToggle.addEventListener('click', () => {
-      applyTheme(root.dataset.theme === 'dark' ? 'light' : 'dark');
+    themeToggle.addEventListener("click", () => {
+      applyTheme(root.dataset.theme === "dark" ? "light" : "dark");
     });
   }
 
-  window.addEventListener('offline', () => {
+  window.addEventListener("offline", () => {
     browserOnline = false;
-    showOfflineToast();
+    hideToast({ onlyKind: "loading" });
+    renderConnectionIndicator();
   });
 
-  window.addEventListener('online', () => {
+  window.addEventListener("online", () => {
     browserOnline = true;
-    refetchCurrentViewAfterReconnect().catch(() => {
-      showToast('Reconnected, but failed to refresh feed', 'error');
-    });
+    renderConnectionIndicator();
+    refetchCurrentViewAfterReconnect().catch(() => {});
   });
 
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/service-worker.js').catch(() => {});
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/service-worker.js").catch(() => {});
     });
   }
 
   const savedTheme = localStorage.getItem(themeStorageKey);
-  applyTheme(savedTheme === 'light' ? 'light' : 'dark');
+  applyTheme(savedTheme === "light" ? "light" : "dark");
 
   syncConfigOptions();
   applyVisitedLinkState();
-  const shouldBootstrapRefetch = activeFilter === 'all'
-    ? selectedSources.length !== availableSources.length
-    : !selectedSources.includes(activeFilter);
+  const shouldBootstrapRefetch =
+    activeFilter === "all"
+      ? selectedSources.length !== availableSources.length
+      : !selectedSources.includes(activeFilter);
   ensureActiveFilterIsVisible();
   renderFilters();
   renderSearch();
   renderFeedBody();
   setRefreshButtonLoading(false);
-
-  if (!browserOnline) {
-    showOfflineToast();
-  }
+  renderConnectionIndicator();
 
   if (shouldBootstrapRefetch) {
-    refetchCurrentView({ loadingMessage: 'Loading feed…' }).catch(() => {
-      showToast('Failed to load configured sources', 'error');
+    refetchCurrentView({ loadingMessage: "Loading feed…" }).catch(() => {
+      showToast("Failed to load configured sources", "error");
     });
   }
 
   function hostLabel(rawURL) {
     try {
       const url = new URL(rawURL);
-      return url.hostname.replace(/^www\./, '');
+      return url.hostname.replace(/^www\./, "");
     } catch {
       return rawURL;
     }
@@ -750,11 +863,11 @@
 
   function escapeHtml(value) {
     return String(value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
 
   function escapeAttr(value) {

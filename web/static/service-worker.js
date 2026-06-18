@@ -1,48 +1,56 @@
-const SHELL_CACHE = 'reader-shell-v21';
-const ITEMS_CACHE = 'reader-items-v21';
+const SHELL_CACHE = "reader-shell-v22";
+const ITEMS_CACHE = "reader-items-v22";
 const CORE_ASSETS = [
-  '/',
-  '/static/style.css?v=27',
-  '/static/app.js?v=24',
-  '/static/source-icons/hackernews.svg',
-  '/static/source-icons/github.svg',
-  '/static/source-icons/huggingface.svg',
-  '/static/source-icons/alphaxiv.png',
-  '/favicon.svg?v=8',
-  '/site.webmanifest?v=8',
-  '/apple-touch-icon.png?v=8',
-  '/icon-192.png?v=8',
-  '/icon-512.png?v=8'
+  "/",
+  "/static/style.css?v=28",
+  "/static/app.js?v=25",
+  "/static/source-icons/hackernews.svg",
+  "/static/source-icons/github.svg",
+  "/static/source-icons/huggingface.svg",
+  "/static/source-icons/alphaxiv.png",
+  "/favicon.svg?v=8",
+  "/site.webmanifest?v=8",
+  "/apple-touch-icon.png?v=8",
+  "/icon-192.png?v=8",
+  "/icon-512.png?v=8",
 ];
 const STATIC_ASSET_PATHS = new Set([
-  '/favicon.svg',
-  '/site.webmanifest',
-  '/apple-touch-icon.png',
-  '/icon-192.png',
-  '/icon-512.png'
+  "/favicon.svg",
+  "/site.webmanifest",
+  "/apple-touch-icon.png",
+  "/icon-192.png",
+  "/icon-512.png",
 ]);
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(SHELL_CACHE).then((cache) => cache.addAll(CORE_ASSETS)));
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(SHELL_CACHE).then((cache) => cache.addAll(CORE_ASSETS)),
+  );
   self.skipWaiting();
 });
 
-self.addEventListener('activate', (event) => {
+self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((key) => key.startsWith('reader-') && ![SHELL_CACHE, ITEMS_CACHE].includes(key))
-          .map((key) => caches.delete(key))
-      )
-    )
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter(
+              (key) =>
+                key.startsWith("reader-") &&
+                ![SHELL_CACHE, ITEMS_CACHE].includes(key),
+            )
+            .map((key) => caches.delete(key)),
+        ),
+      ),
   );
   self.clients.claim();
 });
 
-self.addEventListener('fetch', (event) => {
+self.addEventListener("fetch", (event) => {
   const { request } = event;
-  if (request.method !== 'GET') {
+  if (request.method !== "GET") {
     return;
   }
 
@@ -51,17 +59,20 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (request.mode === 'navigate') {
+  if (request.mode === "navigate") {
     event.respondWith(handleNavigationRequest(request));
     return;
   }
 
-  if (url.pathname === '/api/items') {
+  if (url.pathname === "/api/items") {
     event.respondWith(handleItemsRequest(request));
     return;
   }
 
-  if (url.pathname.startsWith('/static/') || STATIC_ASSET_PATHS.has(url.pathname)) {
+  if (
+    url.pathname.startsWith("/static/") ||
+    STATIC_ASSET_PATHS.has(url.pathname)
+  ) {
     event.respondWith(handleStaticAssetRequest(request));
   }
 });
@@ -75,7 +86,11 @@ async function handleNavigationRequest(request) {
     }
     return response;
   } catch {
-    return (await cache.match(request)) || (await cache.match('/')) || Response.error();
+    return (
+      (await cache.match(request)) ||
+      (await cache.match("/")) ||
+      Response.error()
+    );
   }
 }
 
@@ -102,10 +117,10 @@ async function handleItemsRequest(request) {
       {
         status: 200,
         headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-store',
+          "Content-Type": "application/json",
+          "Cache-Control": "no-store",
         },
-      }
+      },
     );
   }
 }
