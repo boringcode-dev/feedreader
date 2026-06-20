@@ -47,10 +47,6 @@
               <path d="M12 4a1 1 0 0 1 1 1v1.2a1 1 0 1 1-2 0V5a1 1 0 0 1 1-1Zm0 12.8a4.8 4.8 0 1 0 0-9.6a4.8 4.8 0 0 0 0 9.6ZM5 11a1 1 0 1 1 0 2H3.8a1 1 0 1 1 0-2H5Zm15.2 0a1 1 0 1 1 0 2H19a1 1 0 1 1 0-2h1.2ZM7.05 6.64a1 1 0 0 1 1.41 0l.85.85a1 1 0 0 1-1.41 1.42l-.85-.86a1 1 0 0 1 0-1.41Zm8.79 8.79a1 1 0 0 1 1.41 0l.86.85a1 1 0 0 1-1.42 1.42l-.85-.86a1 1 0 0 1 0-1.41ZM8.46 15.43a1 1 0 0 1 0 1.41l-.85.86a1 1 0 1 1-1.42-1.42l.86-.85a1 1 0 0 1 1.41 0Zm8.79-8.79a1 1 0 0 1 0 1.41l-.86.86a1 1 0 1 1-1.41-1.42l.85-.85a1 1 0 0 1 1.42 0ZM12 17.8a1 1 0 0 1 1 1V20a1 1 0 1 1-2 0v-1.2a1 1 0 0 1 1-1Z" fill="currentColor"/>
             </svg>
           </button>
-        </div>
-      </div>
-      <div class="controls-row{{if .SearchOpen}} is-search-active{{end}}" data-controls-row>
-        <div class="filter-cluster">
           <button class="icon-button config-toggle" type="button" data-source-config-open aria-label="Configure visible sources" title="Configure visible sources">
             <svg class="theme-icon" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 7h8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"/>
@@ -64,6 +60,10 @@
               <circle cx="16" cy="17" r="2.1" fill="none" stroke="currentColor" stroke-width="1.8"/>
             </svg>
           </button>
+        </div>
+      </div>
+      <div class="controls-row{{if .SearchOpen}} is-search-active{{end}}" data-controls-row>
+        <div class="filter-cluster">
           <nav class="segmented" data-filter-nav aria-label="Source filters">
             {{range .SourceFilters}}
             {{if eq .Key "all"}}
