@@ -454,6 +454,10 @@ button {
   align-items: flex-start;
 }
 
+.config-options--two-column .config-option--choice {
+  align-items: center;
+}
+
 .config-option--choice {
   position: relative;
   align-items: center;
