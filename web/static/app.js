@@ -59,6 +59,7 @@
     : 0;
   let hasNext = cardsGrid?.dataset.hasNext === "true";
   let searchTimer = null;
+  let ignoreNextEmptySearchInput = false;
   let requestSequence = 0;
   let refreshInFlight = false;
   let feedLoading = false;
@@ -504,6 +505,16 @@
 
   const currentSearchInputValue = () => (searchInput?.value || "").trim();
 
+  const focusSearchInput = () => {
+    if (!searchInput) return;
+    void searchForm?.offsetWidth;
+    searchInput.focus({ preventScroll: true });
+    const valueLength = searchInput.value.length;
+    if (typeof searchInput.setSelectionRange === "function") {
+      searchInput.setSelectionRange(valueLength, valueLength);
+    }
+  };
+
   const applySearch = async (
     nextQuery,
     { collapseWhenEmpty = false, loadingMessage } = {},
@@ -540,6 +551,7 @@
 
   const clearSearch = async ({ collapseWhenEmpty = false } = {}) => {
     cancelPendingSearch();
+    ignoreNextEmptySearchInput = true;
     if (searchInput) {
       searchInput.value = "";
     }
@@ -722,15 +734,10 @@
     searchToggle.addEventListener("click", async () => {
       const hasDraftOrQuery = Boolean(currentSearchInputValue() || activeQuery);
       if (!searchOpen && !hasDraftOrQuery) {
+        ignoreNextEmptySearchInput = false;
         searchOpen = true;
         renderSearch();
-        if (searchInput) {
-          window.requestAnimationFrame(() => {
-            searchInput.focus({ preventScroll: true });
-            const valueLength = searchInput.value.length;
-            searchInput.setSelectionRange(valueLength, valueLength);
-          });
-        }
+        focusSearchInput();
         return;
       }
 
@@ -757,6 +764,11 @@
 
   if (searchInput) {
     searchInput.addEventListener("input", () => {
+      if (ignoreNextEmptySearchInput && currentSearchInputValue() === "") {
+        ignoreNextEmptySearchInput = false;
+        return;
+      }
+      ignoreNextEmptySearchInput = false;
       scheduleSearch();
     });
 
