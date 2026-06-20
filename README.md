@@ -38,6 +38,7 @@
   - GitHub cards show **stars**, **today's stars**, and **forks**
   - Hugging Face cards show **upvotes**
   - alphaXiv cards show **likes**
+  - published/fetched dates are formatted in the browser locale while preserving the stored UTC calendar date
 - **Responsive, minimalist UI** with:
   - source filters
   - real source icons in filters, dialog rows, and card metadata

@@ -275,6 +275,7 @@ func scanFeedItemWithFirstSeen(scanner interface{ Scan(dest ...any) error }) (do
 		Score:       intPtr(score),
 		CommentsURL: stringPtr(commentsURL),
 		PublishedAt: fromNullString(publishedAt),
+		FetchedAt:   firstSeen,
 		SourceRank:  sourceRank,
 		Metadata:    metadata,
 	}, firstSeenValue, nil

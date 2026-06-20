@@ -150,12 +150,16 @@ func (a *App) itemsAPI(w http.ResponseWriter, r *http.Request) {
 	payloadCards := make([]map[string]any, 0, len(cards))
 	for _, card := range cards {
 		payloadCards = append(payloadCards, map[string]any{
-			"source": card.Source,
-			"index":  card.Index,
-			"title":  card.Title,
-			"url":    card.URL,
-			"brief":  maybeString(card.Brief),
-			"host":   card.Host,
+			"source":          card.Source,
+			"index":           card.Index,
+			"title":           card.Title,
+			"url":             card.URL,
+			"brief":           maybeString(card.Brief),
+			"brief_prefix":    maybeString(card.BriefPrefix),
+			"brief_suffix":    maybeString(card.BriefSuffix),
+			"brief_date_iso":  maybeString(card.BriefDateISO),
+			"brief_date_kind": card.BriefDateKind,
+			"host":            card.Host,
 		})
 	}
 	payload := map[string]any{

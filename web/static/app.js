@@ -99,10 +99,74 @@
         <span class="item-index">${escapeHtml(item.index ?? "")}.</span>
         <a href="${escapeAttr(item.url || "#")}" target="_blank" rel="noreferrer">${escapeHtml(item.title || "")}</a>
       </h2>
-      ${item.brief ? `<p class="item-brief"><span class="item-brief-text">${escapeHtml(item.brief)}</span></p>` : ""}
+      ${item.brief ? `<p class="item-brief"${item.brief_prefix ? ` data-brief-prefix="${escapeAttr(item.brief_prefix)}"` : ""}${item.brief_suffix ? ` data-brief-suffix="${escapeAttr(item.brief_suffix)}"` : ""}${item.brief_date_iso ? ` data-brief-date-iso="${escapeAttr(item.brief_date_iso)}" data-brief-date-kind="${escapeAttr(item.brief_date_kind || "")}"` : ""}><span class="item-brief-text">${escapeHtml(item.brief)}</span></p>` : ""}
       <p class="item-host"><img class="source-icon-image source-icon-image--host source-icon-image--${escapeAttr(item.source || "")}" src="${escapeAttr(sourceIconPaths[item.source] || "")}" alt="" aria-hidden="true" /><span class="item-host-text">${escapeHtml(item.host || hostLabel(item.url || ""))}</span></p>
     </article>
   `;
+
+  const browserLocales =
+    Array.isArray(navigator.languages) && navigator.languages.length > 0
+      ? navigator.languages
+      : [navigator.language || "en-US"];
+
+  function formatLocalizedBriefDate(dateISO, dateKind) {
+    if (!dateISO || !dateKind) return "";
+    const parsed = new Date(dateISO);
+    if (Number.isNaN(parsed.getTime())) return "";
+    const label =
+      dateKind === "published"
+        ? "Published"
+        : dateKind === "fetched"
+          ? "Fetched"
+          : "";
+    if (!label) return "";
+    const formattedDate = new Intl.DateTimeFormat(browserLocales, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(parsed);
+    return `${label} ${formattedDate}`;
+  }
+
+  function composeBriefText({ prefix, dateISO, dateKind, suffix }) {
+    const prefixParts = [];
+    if (prefix) {
+      prefixParts.push(prefix);
+    }
+    const localizedDate = formatLocalizedBriefDate(dateISO, dateKind);
+    if (localizedDate) {
+      prefixParts.push(localizedDate);
+    }
+    const leading = prefixParts.join(" · ");
+    if (suffix) {
+      return leading ? `${leading} - ${suffix}` : suffix;
+    }
+    return leading;
+  }
+
+  function localizeBriefDates(scope = document) {
+    scope.querySelectorAll?.(".item-brief").forEach((brief) => {
+      const dateISO = brief.dataset.briefDateIso || "";
+      const dateKind = brief.dataset.briefDateKind || "";
+      if (!dateISO || !dateKind) return;
+      const prefix = brief.dataset.briefPrefix || "";
+      const suffix = brief.dataset.briefSuffix || "";
+      const localized = composeBriefText({
+        prefix,
+        dateISO,
+        dateKind,
+        suffix,
+      });
+      if (!localized) return;
+      const textNode = brief.querySelector(".item-brief-text");
+      if (textNode) {
+        textNode.textContent = localized;
+      } else {
+        brief.textContent = localized;
+      }
+    });
+  }
 
   function normalizeSelectedSources(rawValue) {
     const values = Array.isArray(rawValue) ? rawValue : [];
@@ -549,6 +613,7 @@
         const html = items.map((item) => cardTemplate(item)).join("");
         if (html) {
           cardsGrid.insertAdjacentHTML("beforeend", html); // HTML is built from escaped API fields plus fixed local icon paths.
+          localizeBriefDates(cardsGrid);
         }
       }
       loadedCount = append ? loadedCount + items.length : items.length;
@@ -956,6 +1021,7 @@
   syncConfigOptions();
   syncDensityOptions();
   applyVisitedLinkState();
+  localizeBriefDates();
   const shouldBootstrapRefetch =
     activeFilter === "all"
       ? selectedSources.length !== availableSources.length

@@ -169,13 +169,20 @@ func (s *FeedService) HealthPayload() (map[string]any, error) {
 func BuildCards(items []domain.FeedItem, offset int) []domain.CardView {
 	cards := make([]domain.CardView, 0, len(items))
 	for i, item := range items {
+		briefPrefix := cardBriefPrefix(item)
+		briefSuffix := cardBriefSuffix(item)
+		briefDateISO, briefDateKind := cardDateParts(item)
 		cards = append(cards, domain.CardView{
-			Source: item.Source,
-			Index:  offset + i + 1,
-			Title:  item.Title,
-			URL:    item.URL,
-			Brief:  cardBrief(item),
-			Host:   hostLabel(item.URL),
+			Source:        item.Source,
+			Index:         offset + i + 1,
+			Title:         item.Title,
+			URL:           item.URL,
+			Brief:         composeBrief(briefPrefix, briefDateISO, briefDateKind, briefSuffix),
+			BriefPrefix:   briefPrefix,
+			BriefSuffix:   briefSuffix,
+			BriefDateISO:  briefDateISO,
+			BriefDateKind: briefDateKind,
+			Host:          hostLabel(item.URL),
 		})
 	}
 	return cards
@@ -191,24 +198,65 @@ func BuildErrors(snapshots []domain.SourceSnapshot) []domain.ErrorView {
 	return out
 }
 
-func cardBrief(item domain.FeedItem) *string {
+func cardBriefPrefix(item domain.FeedItem) *string {
+	fragments := cardStatFragments(item)
+	if len(fragments) == 0 {
+		return nil
+	}
+	value := strings.Join(fragments, " · ")
+	return &value
+}
+
+func cardBriefSuffix(item domain.FeedItem) *string {
 	switch item.Source {
 	case "hackernews":
-		fragments := []string{}
+		return nil
+	case "github":
+		if summary := normalizedSummary(item.Summary); summary != nil {
+			return summary
+		}
+		if language, ok := metadataString(item.Metadata, "language"); ok {
+			value := "Trending " + language + " repository on GitHub"
+			return &value
+		}
+		value := "Trending repository on GitHub"
+		return &value
+	case "huggingface":
+		if summary := normalizedSummary(item.Summary); summary != nil {
+			return summary
+		}
+		if item.Author != nil && strings.TrimSpace(*item.Author) != "" {
+			value := strings.TrimSpace(*item.Author)
+			return &value
+		}
+		value := "Trending paper on Hugging Face"
+		return &value
+	case "alphaxiv":
+		if summary := normalizedSummary(item.Summary); summary != nil {
+			return summary
+		}
+		if item.Author != nil && strings.TrimSpace(*item.Author) != "" {
+			value := strings.TrimSpace(*item.Author)
+			return &value
+		}
+		value := "Trending paper on alphaXiv"
+		return &value
+	default:
+		return normalizedSummary(item.Summary)
+	}
+}
+
+func cardStatFragments(item domain.FeedItem) []string {
+	fragments := []string{}
+	switch item.Source {
+	case "hackernews":
 		if item.Score != nil {
 			fragments = append(fragments, fmtSprintf("%d points", *item.Score))
 		}
 		if comments, ok := metadataInt(item.Metadata, "comments_count"); ok {
 			fragments = append(fragments, fmtSprintf("%d comments", comments))
 		}
-		if len(fragments) > 0 {
-			value := strings.Join(fragments, " · ")
-			return &value
-		}
-		value := "Hacker News link"
-		return &value
 	case "github":
-		fragments := []string{}
 		if stars, ok := metadataInt(item.Metadata, "total_stars"); ok {
 			fragments = append(fragments, fmtSprintf("%s stars", formatCount(stars)))
 		}
@@ -218,90 +266,89 @@ func cardBrief(item domain.FeedItem) *string {
 		if forks, ok := metadataInt(item.Metadata, "forks"); ok {
 			fragments = append(fragments, fmtSprintf("%s forks", formatCount(forks)))
 		}
-		prefix := strings.Join(fragments, " · ")
-		if item.Summary != nil && strings.TrimSpace(*item.Summary) != "" {
-			summary := strings.Join(strings.Fields(*item.Summary), " ")
-			if prefix != "" {
-				value := prefix + " - " + summary
-				return &value
-			}
-			return &summary
-		}
-		if language, ok := metadataString(item.Metadata, "language"); ok {
-			if prefix != "" {
-				value := prefix + fmtSprintf(" - Trending %s repository on GitHub", language)
-				return &value
-			}
-			value := "Trending " + language + " repository on GitHub"
-			return &value
-		}
-		if prefix != "" {
-			value := prefix
-			return &value
-		}
-		value := "Trending repository on GitHub"
-		return &value
 	case "huggingface":
-		prefix := ""
 		if item.Score != nil {
-			prefix = fmtSprintf("%s upvotes", formatCount(*item.Score))
+			fragments = append(fragments, fmtSprintf("%s upvotes", formatCount(*item.Score)))
 		}
-		if item.Summary != nil && strings.TrimSpace(*item.Summary) != "" {
-			summary := strings.Join(strings.Fields(*item.Summary), " ")
-			if prefix != "" {
-				value := prefix + " - " + summary
-				return &value
-			}
-			return &summary
-		}
-		if item.Author != nil && strings.TrimSpace(*item.Author) != "" {
-			if prefix != "" {
-				value := prefix + " - " + *item.Author
-				return &value
-			}
-			value := *item.Author
-			return &value
-		}
-		if prefix != "" {
-			value := prefix
-			return &value
-		}
-		value := "Trending paper on Hugging Face"
-		return &value
 	case "alphaxiv":
-		prefix := ""
 		if item.Score != nil {
-			prefix = fmtSprintf("%s likes", formatCount(*item.Score))
+			fragments = append(fragments, fmtSprintf("%s likes", formatCount(*item.Score)))
 		}
-		if item.Summary != nil && strings.TrimSpace(*item.Summary) != "" {
-			summary := strings.Join(strings.Fields(*item.Summary), " ")
-			if prefix != "" {
-				value := prefix + " - " + summary
-				return &value
-			}
-			return &summary
-		}
-		if item.Author != nil && strings.TrimSpace(*item.Author) != "" {
-			if prefix != "" {
-				value := prefix + " - " + *item.Author
-				return &value
-			}
-			value := *item.Author
+	}
+	return fragments
+}
+
+func cardDateLabel(item domain.FeedItem) string {
+	if item.PublishedAt != nil {
+		return "Published " + item.PublishedAt.UTC().Format("Jan 2, 2006")
+	}
+	if item.FetchedAt != nil {
+		return "Fetched " + item.FetchedAt.UTC().Format("Jan 2, 2006")
+	}
+	return ""
+}
+
+func cardDateParts(item domain.FeedItem) (*string, string) {
+	if item.PublishedAt != nil {
+		value := item.PublishedAt.UTC().Format(time.RFC3339Nano)
+		return &value, "published"
+	}
+	if item.FetchedAt != nil {
+		value := item.FetchedAt.UTC().Format(time.RFC3339Nano)
+		return &value, "fetched"
+	}
+	return nil, ""
+}
+
+func composeBrief(prefix *string, dateISO *string, dateKind string, suffix *string) *string {
+	parts := []string{}
+	if prefix != nil && strings.TrimSpace(*prefix) != "" {
+		parts = append(parts, strings.TrimSpace(*prefix))
+	}
+	if fallback := cardDateLabelFromParts(dateISO, dateKind); fallback != "" {
+		parts = append(parts, fallback)
+	}
+	joined := strings.Join(parts, " · ")
+	if suffix != nil && strings.TrimSpace(*suffix) != "" {
+		text := strings.TrimSpace(*suffix)
+		if joined != "" {
+			value := joined + " - " + text
 			return &value
 		}
-		if prefix != "" {
-			value := prefix
-			return &value
-		}
-		value := "Trending paper on alphaXiv"
-		return &value
-	default:
-		if item.Summary != nil && strings.TrimSpace(*item.Summary) != "" {
-			brief := strings.Join(strings.Fields(*item.Summary), " ")
-			return &brief
-		}
+		return &text
+	}
+	if joined == "" {
 		return nil
 	}
+	return &joined
+}
+
+func cardDateLabelFromParts(dateISO *string, dateKind string) string {
+	if dateISO == nil || strings.TrimSpace(*dateISO) == "" {
+		return ""
+	}
+	parsed, err := time.Parse(time.RFC3339Nano, *dateISO)
+	if err != nil {
+		return ""
+	}
+	verb := ""
+	switch dateKind {
+	case "published":
+		verb = "Published"
+	case "fetched":
+		verb = "Fetched"
+	default:
+		return ""
+	}
+	return verb + " " + parsed.UTC().Format("Jan 2, 2006")
+}
+
+func normalizedSummary(summary *string) *string {
+	if summary == nil || strings.TrimSpace(*summary) == "" {
+		return nil
+	}
+	value := strings.Join(strings.Fields(*summary), " ")
+	return &value
 }
 
 func hostLabel(rawURL string) string {

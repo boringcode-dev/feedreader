@@ -12,6 +12,7 @@ type FeedItem struct {
 	Score       *int
 	CommentsURL *string
 	PublishedAt *time.Time
+	FetchedAt   *time.Time
 	SourceRank  int
 	Metadata    map[string]any
 }
@@ -43,12 +44,16 @@ type RefreshOutcome struct {
 }
 
 type CardView struct {
-	Source string
-	Index  int
-	Title  string
-	URL    string
-	Brief  *string
-	Host   string
+	Source        string
+	Index         int
+	Title         string
+	URL           string
+	Brief         *string
+	BriefPrefix   *string
+	BriefSuffix   *string
+	BriefDateISO  *string
+	BriefDateKind string
+	Host          string
 }
 
 type ErrorView struct {

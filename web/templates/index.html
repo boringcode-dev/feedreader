@@ -17,7 +17,7 @@
     <link rel="shortcut icon" href="/favicon.svg?v=8" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=8" />
     <link rel="stylesheet" href="/static/style.css?v=32" />
-    <script src="/static/app.js?v=27" defer></script>
+    <script src="/static/app.js?v=28" defer></script>
   </head>
   <body>
     <header class="shell page-header">
@@ -205,7 +205,7 @@
             <a href="{{.URL}}" target="_blank" rel="noreferrer">{{.Title}}</a>
           </h2>
           {{if .Brief}}
-          <p class="item-brief">
+          <p class="item-brief"{{if .BriefPrefix}} data-brief-prefix="{{.BriefPrefix}}"{{end}}{{if .BriefSuffix}} data-brief-suffix="{{.BriefSuffix}}"{{end}}{{if .BriefDateISO}} data-brief-date-iso="{{.BriefDateISO}}" data-brief-date-kind="{{.BriefDateKind}}"{{end}}>
             <span class="item-brief-text">{{.Brief}}</span>
           </p>
           {{end}}
