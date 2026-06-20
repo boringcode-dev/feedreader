@@ -32,7 +32,11 @@ func (s GitHubTrendingSource) Fetch(ctx context.Context, client *http.Client) ([
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		return nil, &httpError{StatusCode: resp.StatusCode, Body: string(body)}
 	}
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	return parseGitHubTrending(resp.Body)
+}
+
+func parseGitHubTrending(reader io.Reader) ([]domain.FeedItem, error) {
+	doc, err := goquery.NewDocumentFromReader(reader)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +47,10 @@ func (s GitHubTrendingSource) Fetch(ctx context.Context, client *http.Client) ([
 			return
 		}
 		href, _ := repoLink.Attr("href")
-		repoPath := strings.Trim(strings.ReplaceAll(repoLink.Text(), " ", ""), "/")
+		repoPath := normalizeGitHubRepoPath(href, repoLink.Text())
+		if repoPath == "" {
+			return
+		}
 		description := cleanString(article.Find("p").First().Text())
 		language := cleanString(article.Find(`[itemprop="programmingLanguage"]`).First().Text())
 		stars := parseDigits(article.Find(`a[href$="/stargazers"]`).First().Text())
@@ -81,6 +88,17 @@ func resolveGitHubURL(path string) string {
 	base, _ := url.Parse("https://github.com")
 	rel, _ := url.Parse(path)
 	return base.ResolveReference(rel).String()
+}
+
+func normalizeGitHubRepoPath(href string, linkText string) string {
+	if parsed, err := url.Parse(strings.TrimSpace(href)); err == nil {
+		path := strings.Trim(parsed.Path, "/")
+		parts := strings.Split(path, "/")
+		if len(parts) >= 2 && parts[0] != "" && parts[1] != "" {
+			return parts[0] + "/" + parts[1]
+		}
+	}
+	return strings.Trim(strings.Join(strings.Fields(linkText), ""), "/")
 }
 
 func parseDigits(value string) *int {

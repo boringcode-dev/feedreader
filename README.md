@@ -36,6 +36,7 @@
 - **Source-aware card summaries**
   - Hacker News cards show **points** and **comments**
   - GitHub cards show **stars**, **today's stars**, and **forks**
+  - GitHub repo titles are normalized to canonical `owner/repo` form from the repo URL path
   - Hugging Face cards show **upvotes**
   - alphaXiv cards show **likes**
   - published/fetched dates are formatted in the browser locale while preserving the stored UTC calendar date

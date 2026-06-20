@@ -226,3 +226,50 @@ func TestSaveSnapshotPreservesInitialDatesAndUsesFirstSeenFallbackOrdering(t *te
 		t.Fatalf("expected updated_at to preserve initial fetched timestamp %s, got %s", wantFetched, updatedAt)
 	}
 }
+
+func TestNormalizeGitHubItemsCanonicalizesLegacyRepoIdentity(t *testing.T) {
+	database, err := dbpkg.Open(filepath.Join(t.TempDir(), "feedreader.db"))
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	repo := NewSQLiteRepository(database)
+	fetchedAt := time.Date(2026, 6, 20, 8, 0, 0, 0, time.UTC)
+	legacyExternalID := "\n\n\n\n\npalmier-io/\n\npalmier-pro"
+	legacyTitle := "\n\n\n\n\npalmier-io/\n\npalmier-pro"
+
+	if err := repo.SaveSnapshot("github", fetchedAt, []domain.FeedItem{{
+		Source:     "github",
+		ExternalID: legacyExternalID,
+		Title:      legacyTitle,
+		URL:        "https://github.com/palmier-io/palmier-pro",
+		SourceRank: 1,
+		Metadata:   map[string]any{},
+	}}); err != nil {
+		t.Fatalf("save legacy github snapshot: %v", err)
+	}
+
+	if err := repo.NormalizeGitHubItems(); err != nil {
+		t.Fatalf("normalize github items: %v", err)
+	}
+
+	var count int
+	if err := repo.db.QueryRow(`SELECT COUNT(*) FROM items WHERE source = 'github'`).Scan(&count); err != nil {
+		t.Fatalf("count github items: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected 1 github row after normalization, got %d", count)
+	}
+
+	var externalID, title string
+	if err := repo.db.QueryRow(`SELECT external_id, title FROM items WHERE source = 'github' LIMIT 1`).Scan(&externalID, &title); err != nil {
+		t.Fatalf("query normalized github row: %v", err)
+	}
+	if externalID != "palmier-io/palmier-pro" {
+		t.Fatalf("unexpected normalized external_id: %q", externalID)
+	}
+	if title != "palmier-io/palmier-pro" {
+		t.Fatalf("unexpected normalized title: %q", title)
+	}
+}

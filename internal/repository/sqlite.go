@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -17,6 +18,57 @@ type SQLiteRepository struct {
 
 func NewSQLiteRepository(db *sql.DB) *SQLiteRepository {
 	return &SQLiteRepository{db: db}
+}
+
+func (r *SQLiteRepository) NormalizeGitHubItems() error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	rows, err := tx.Query(`SELECT id, external_id, title, url FROM items WHERE source = 'github'`)
+	if err != nil {
+		return fmt.Errorf("query github items: %w", err)
+	}
+	defer rows.Close()
+
+	type githubRow struct {
+		id         int
+		externalID string
+		title      string
+		url        string
+	}
+
+	githubRows := []githubRow{}
+	for rows.Next() {
+		var row githubRow
+		if err := rows.Scan(&row.id, &row.externalID, &row.title, &row.url); err != nil {
+			return fmt.Errorf("scan github item: %w", err)
+		}
+		githubRows = append(githubRows, row)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate github items: %w", err)
+	}
+
+	for _, row := range githubRows {
+		title, externalID := normalizeGitHubRepoIdentity(row.url, row.title)
+		if title == "" || externalID == "" {
+			continue
+		}
+		if row.title == title && row.externalID == externalID {
+			continue
+		}
+		if _, err := tx.Exec(`UPDATE items SET external_id = ?, title = ? WHERE id = ?`, externalID, title, row.id); err != nil {
+			return fmt.Errorf("normalize github row %d: %w", row.id, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit tx: %w", err)
+	}
+	return nil
 }
 
 func (r *SQLiteRepository) SaveSnapshot(source string, fetchedAt time.Time, items []domain.FeedItem) error {
@@ -355,6 +407,22 @@ func effectiveSortTime(publishedAt *time.Time, firstSeenAt time.Time) time.Time 
 		return publishedAt.UTC()
 	}
 	return firstSeenAt.UTC()
+}
+
+func normalizeGitHubRepoIdentity(rawURL string, fallbackTitle string) (string, string) {
+	if parsed, err := url.Parse(strings.TrimSpace(rawURL)); err == nil {
+		path := strings.Trim(parsed.Path, "/")
+		parts := strings.Split(path, "/")
+		if len(parts) >= 2 && parts[0] != "" && parts[1] != "" {
+			title := parts[0] + "/" + parts[1]
+			return title, strings.ToLower(title)
+		}
+	}
+	trimmed := strings.Trim(strings.Join(strings.Fields(fallbackTitle), ""), "/")
+	if trimmed == "" {
+		return "", ""
+	}
+	return trimmed, strings.ToLower(trimmed)
 }
 
 func truncate(value string, limit int) string {

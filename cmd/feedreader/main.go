@@ -64,6 +64,10 @@ func serve(cfg config.Config, args []string) int {
 	}
 	defer database.Close()
 	repo := repository.NewSQLiteRepository(database)
+	if err := repo.NormalizeGitHubItems(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 	svc := service.New(cfg, repo)
 	baseDir, err := os.Getwd()
 	if err != nil {
@@ -101,6 +105,10 @@ func fetch(cfg config.Config) int {
 	}
 	defer database.Close()
 	repo := repository.NewSQLiteRepository(database)
+	if err := repo.NormalizeGitHubItems(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 	svc := service.New(cfg, repo)
 	outcomes := svc.RefreshAll(context.Background())
 	payload, _ := json.MarshalIndent(outcomes, "", "  ")
