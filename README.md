@@ -45,7 +45,7 @@
   - dark/light mode
   - inline expanding search
   - refresh control
-  - source configuration dialog
+  - reader settings dialog for theme, density, and source visibility
 - **Configurable visible sources** stored in `localStorage`
   - choose which source buttons are shown
   - when 2+ sources are enabled, `All` stays visible and aggregates over the enabled set
@@ -313,7 +313,7 @@ Presentation-layer note:
 - the search control expands inline in the header
 - clicking the search icon focuses the input
 - the input renders at `16px` to avoid common iOS Safari auto-zoom behavior
-- typing is debounced before hitting the API
+- typing is debounced and only triggers the search API once the query reaches at least 2 characters
 - closing the search control clears the query and resets the feed only when an active query exists
 - closing an empty visible search box just hides the control and does not refetch `/api/items`
 
@@ -333,13 +333,26 @@ Presentation-layer note:
 - when the browser comes back online, the no-wifi indicator disappears and the current view is re-fetched silently from `/api/items`
 - reconnect refreshes backend-stored items only; the only UI path that calls `POST /api/refresh` remains the manual refresh button
 
-### Source configuration
+### Reader settings dialog
 
-- the configure button opens a dialog that lets the user choose visible sources
+- the configure button opens a `Reader settings` dialog
+- theme is configured in the dialog instead of a dedicated header toggle
+- the dialog sections are ordered as:
+  - `Theme`
+  - `UI density`
+  - `Sources`
+- theme and density options are shown in a 2-column layout to reduce dialog height
+- clicking the dialog backdrop closes it
+- background page scrolling is locked while the dialog is open
 - selected sources are stored in `localStorage` under `feedreader.sources`
+- selected density is stored in `localStorage` under `feedreader.uiDensity`
+- selected theme is stored in `localStorage` under `feedreader.theme`
 - source-specific filters render as **real icon-only buttons**
 - `All` remains a text button
 - the source dialog renders **real source icons** before each source name
+- density options are:
+  - `Comfortable` (default)
+  - `Compact`
 - if **2 or more** sources are enabled, the filter bar shows:
   - `All`
   - each enabled source

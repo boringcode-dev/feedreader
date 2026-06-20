@@ -8,6 +8,7 @@
     <meta name="theme-color" content="#111e2c" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#111e2c" />
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#e1ebf7" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="reader" />
@@ -15,8 +16,8 @@
     <link rel="icon" href="/favicon.svg?v=8" sizes="any" type="image/svg+xml" />
     <link rel="shortcut icon" href="/favicon.svg?v=8" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=8" />
-    <link rel="stylesheet" href="/static/style.css?v=30" />
-    <script src="/static/app.js?v=25" defer></script>
+    <link rel="stylesheet" href="/static/style.css?v=32" />
+    <script src="/static/app.js?v=27" defer></script>
   </head>
   <body>
     <header class="shell page-header">
@@ -39,15 +40,7 @@
               <path d="M20 4v5h-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/>
             </svg>
           </button>
-          <button class="theme-toggle icon-button" type="button" data-theme-toggle aria-label="Switch to light mode" title="Toggle color mode">
-            <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M20.9 14.1A8.5 8.5 0 0 1 9.9 3.1a.75.75 0 0 0-.88-.96A9.5 9.5 0 1 0 21.86 15a.75.75 0 0 0-.96-.89Z" fill="currentColor"/>
-            </svg>
-            <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 4a1 1 0 0 1 1 1v1.2a1 1 0 1 1-2 0V5a1 1 0 0 1 1-1Zm0 12.8a4.8 4.8 0 1 0 0-9.6a4.8 4.8 0 0 0 0 9.6ZM5 11a1 1 0 1 1 0 2H3.8a1 1 0 1 1 0-2H5Zm15.2 0a1 1 0 1 1 0 2H19a1 1 0 1 1 0-2h1.2ZM7.05 6.64a1 1 0 0 1 1.41 0l.85.85a1 1 0 0 1-1.41 1.42l-.85-.86a1 1 0 0 1 0-1.41Zm8.79 8.79a1 1 0 0 1 1.41 0l.86.85a1 1 0 0 1-1.42 1.42l-.85-.86a1 1 0 0 1 0-1.41ZM8.46 15.43a1 1 0 0 1 0 1.41l-.85.86a1 1 0 1 1-1.42-1.42l.86-.85a1 1 0 0 1 1.41 0Zm8.79-8.79a1 1 0 0 1 0 1.41l-.86.86a1 1 0 1 1-1.41-1.42l.85-.85a1 1 0 0 1 1.42 0ZM12 17.8a1 1 0 0 1 1 1V20a1 1 0 1 1-2 0v-1.2a1 1 0 0 1 1-1Z" fill="currentColor"/>
-            </svg>
-          </button>
-          <button class="icon-button config-toggle" type="button" data-source-config-open aria-label="Configure visible sources" title="Configure visible sources">
+          <button class="icon-button config-toggle" type="button" data-source-config-open aria-label="Open reader settings" title="Open reader settings">
             <svg class="theme-icon" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 7h8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"/>
               <path d="M16 7h4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"/>
@@ -99,37 +92,95 @@
     <dialog class="config-dialog" data-source-config-dialog>
       <form class="config-dialog-form" method="dialog">
         <div class="config-dialog-header">
-          <h2>Visible sources</h2>
-          <button class="icon-button config-close" type="button" data-source-config-close aria-label="Close source configuration" title="Close source configuration">
+          <h2>Reader settings</h2>
+          <button class="icon-button config-close" type="button" data-source-config-close aria-label="Close reader settings" title="Close reader settings">
             <svg class="theme-icon" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M6 6l12 12" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/>
               <path d="M18 6L6 18" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/>
             </svg>
           </button>
         </div>
-        <p class="config-dialog-copy">Choose which sources appear in the feed and filter bar.</p>
-        <div class="config-options">
-          <label class="config-option">
-            <input type="checkbox" value="hackernews" data-source-option checked />
-            <img class="source-icon-image source-icon-image--dialog source-icon-image--hackernews" src="/static/source-icons/hackernews.svg" alt="" aria-hidden="true" />
-            <span>Hacker News</span>
-          </label>
-          <label class="config-option">
-            <input type="checkbox" value="github" data-source-option checked />
-            <img class="source-icon-image source-icon-image--dialog source-icon-image--github" src="/static/source-icons/github.svg" alt="" aria-hidden="true" />
-            <span>GitHub Trending</span>
-          </label>
-          <label class="config-option">
-            <input type="checkbox" value="huggingface" data-source-option checked />
-            <img class="source-icon-image source-icon-image--dialog source-icon-image--huggingface" src="/static/source-icons/huggingface.svg" alt="" aria-hidden="true" />
-            <span>Hugging Face Papers Trending</span>
-          </label>
-          <label class="config-option">
-            <input type="checkbox" value="alphaxiv" data-source-option checked />
-            <img class="source-icon-image source-icon-image--dialog source-icon-image--alphaxiv" src="/static/source-icons/alphaxiv.png" alt="" aria-hidden="true" />
-            <span>alphaXiv</span>
-          </label>
-        </div>
+        <p class="config-dialog-copy">Adjust the reader appearance and choose which sources appear in the feed.</p>
+        <section class="config-section" aria-labelledby="config-theme-title">
+          <div class="config-section-header">
+            <h3 id="config-theme-title" class="config-section-title">Theme</h3>
+            <p class="config-section-copy">Choose the color mode used across the reader.</p>
+          </div>
+          <div class="config-options config-options--two-column">
+            <label class="config-option">
+              <input type="radio" name="ui-theme" value="dark" data-theme-option checked />
+              <span class="config-option-body">
+                <span class="config-option-title">Dark</span>
+                <span class="config-option-copy">Use the darker reader theme.</span>
+              </span>
+            </label>
+            <label class="config-option">
+              <input type="radio" name="ui-theme" value="light" data-theme-option />
+              <span class="config-option-body">
+                <span class="config-option-title">Light</span>
+                <span class="config-option-copy">Use the lighter reader theme.</span>
+              </span>
+            </label>
+          </div>
+        </section>
+        <section class="config-section" aria-labelledby="config-density-title">
+          <div class="config-section-header">
+            <h3 id="config-density-title" class="config-section-title">UI density</h3>
+            <p class="config-section-copy">Use the current spacing or fit more feed content on screen with a tighter layout.</p>
+          </div>
+          <div class="config-options config-options--two-column">
+            <label class="config-option">
+              <input type="radio" name="ui-density" value="current" data-density-option checked />
+              <span class="config-option-body">
+                <span class="config-option-title">Comfortable</span>
+                <span class="config-option-copy">Keep the existing spacing and card sizing.</span>
+              </span>
+            </label>
+            <label class="config-option">
+              <input type="radio" name="ui-density" value="compact" data-density-option />
+              <span class="config-option-body">
+                <span class="config-option-title">Compact</span>
+                <span class="config-option-copy">Reduce spacing to show more items at once.</span>
+              </span>
+            </label>
+          </div>
+        </section>
+        <section class="config-section" aria-labelledby="config-sources-title">
+          <div class="config-section-header">
+            <h3 id="config-sources-title" class="config-section-title">Sources</h3>
+            <p class="config-section-copy">Show or hide sources in the filter bar and the combined feed view.</p>
+          </div>
+          <div class="config-options">
+            <label class="config-option">
+              <input type="checkbox" value="hackernews" data-source-option checked />
+              <img class="source-icon-image source-icon-image--dialog source-icon-image--hackernews" src="/static/source-icons/hackernews.svg" alt="" aria-hidden="true" />
+              <span class="config-option-body">
+                <span class="config-option-title">Hacker News</span>
+              </span>
+            </label>
+            <label class="config-option">
+              <input type="checkbox" value="github" data-source-option checked />
+              <img class="source-icon-image source-icon-image--dialog source-icon-image--github" src="/static/source-icons/github.svg" alt="" aria-hidden="true" />
+              <span class="config-option-body">
+                <span class="config-option-title">GitHub Trending</span>
+              </span>
+            </label>
+            <label class="config-option">
+              <input type="checkbox" value="huggingface" data-source-option checked />
+              <img class="source-icon-image source-icon-image--dialog source-icon-image--huggingface" src="/static/source-icons/huggingface.svg" alt="" aria-hidden="true" />
+              <span class="config-option-body">
+                <span class="config-option-title">Hugging Face Papers Trending</span>
+              </span>
+            </label>
+            <label class="config-option">
+              <input type="checkbox" value="alphaxiv" data-source-option checked />
+              <img class="source-icon-image source-icon-image--dialog source-icon-image--alphaxiv" src="/static/source-icons/alphaxiv.png" alt="" aria-hidden="true" />
+              <span class="config-option-body">
+                <span class="config-option-title">alphaXiv</span>
+              </span>
+            </label>
+          </div>
+        </section>
         <div class="config-dialog-actions">
           <button class="dialog-button" type="button" data-source-config-cancel>Cancel</button>
           <button class="dialog-button dialog-button-primary" type="button" data-source-config-save>Save</button>

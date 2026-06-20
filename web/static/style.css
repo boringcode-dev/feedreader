@@ -372,9 +372,42 @@ button {
   line-height: 1.45;
 }
 
+.config-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.config-section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+.config-section-title {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.config-section-copy {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
 .config-options {
   display: grid;
   gap: 0.65rem;
+}
+
+.config-options--two-column {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
 }
 
 .config-option {
@@ -390,6 +423,37 @@ button {
 
 .config-option input {
   margin: 0;
+}
+
+.config-option-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.16rem;
+}
+
+.config-option-title {
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.config-option-copy {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.config-options--two-column .config-option {
+  align-items: flex-start;
+}
+
+.is-dialog-open,
+body.is-dialog-open {
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 .config-dialog-actions {
@@ -608,6 +672,49 @@ button {
   min-width: 0;
 }
 
+:root[data-ui-density="compact"] {
+  --control-height: 2rem;
+}
+
+:root[data-ui-density="compact"] .page-header {
+  gap: 0.42rem;
+  padding: max(0.75rem, env(safe-area-inset-top)) 0 0.55rem;
+}
+
+:root[data-ui-density="compact"] .controls-row,
+:root[data-ui-density="compact"] .filter-cluster,
+:root[data-ui-density="compact"] .search-cluster {
+  gap: 0.35rem;
+}
+
+:root[data-ui-density="compact"] .cards-grid {
+  gap: 0.42rem;
+}
+
+:root[data-ui-density="compact"] .item-card {
+  gap: 0.34rem;
+  padding: 0.5rem 0.56rem;
+  border-radius: 0.82rem;
+}
+
+:root[data-ui-density="compact"] .item-index {
+  font-size: 0.76rem;
+}
+
+:root[data-ui-density="compact"] .item-title {
+  font-size: 0.91rem;
+  line-height: 1.3;
+}
+
+:root[data-ui-density="compact"] .item-brief {
+  font-size: 0.82rem;
+  line-height: 1.38;
+}
+
+:root[data-ui-density="compact"] .item-host {
+  font-size: 0.72rem;
+}
+
 .footer-actions {
   display: flex;
   justify-content: center;
@@ -664,7 +771,11 @@ button {
 }
 
 .view-more {
-  min-height: 2.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--control-height);
+  min-height: var(--control-height);
   padding: 0 1rem;
   border-radius: 999px;
   font-size: 0.9rem;

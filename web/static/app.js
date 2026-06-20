@@ -27,6 +27,12 @@
   const configOptions = Array.from(
     document.querySelectorAll("[data-source-option]"),
   );
+  const densityOptions = Array.from(
+    document.querySelectorAll("[data-density-option]"),
+  );
+  const themeOptions = Array.from(
+    document.querySelectorAll("[data-theme-option]"),
+  );
   const connectionIndicator = document.querySelector(
     "[data-connection-indicator]",
   );
@@ -44,6 +50,7 @@
   const pageSize = Number(cardsGrid?.dataset.pageSize || 12);
   const searchDebounceMs = 1100;
   const sourceConfigStorageKey = "feedreader.sources";
+  const densityConfigStorageKey = "feedreader.uiDensity";
   const visitedLinksStorageKey = "feedreader.visited";
   const visitedLinksLimit = 500;
   const themeStorageKey = "feedreader.theme";
@@ -51,6 +58,7 @@
 
   let activeFilter = cardsGrid?.dataset.currentSource || "all";
   let selectedSources = loadSelectedSources();
+  let uiDensity = loadUIDensity();
   let visitedLinks = loadVisitedLinks();
   let activeQuery = (searchInput?.value || "").trim();
   let searchOpen = Boolean(activeQuery);
@@ -104,6 +112,10 @@
       seen.add(value);
       return true;
     });
+  }
+
+  function normalizeUIDensity(rawValue) {
+    return rawValue === "compact" ? "compact" : "current";
   }
 
   function normalizeVisitedHref(rawValue) {
@@ -177,11 +189,52 @@
     }
   }
 
+  function loadUIDensity() {
+    try {
+      return normalizeUIDensity(
+        localStorage.getItem(densityConfigStorageKey) || "current",
+      );
+    } catch {
+      return "current";
+    }
+  }
+
   function persistSelectedSources() {
     localStorage.setItem(
       sourceConfigStorageKey,
       JSON.stringify(selectedSources),
     );
+  }
+
+  function persistUIDensity() {
+    localStorage.setItem(densityConfigStorageKey, uiDensity);
+  }
+
+  function syncThemeOptions() {
+    themeOptions.forEach((option) => {
+      option.checked = option.value === root.dataset.theme;
+    });
+  }
+
+  function currentThemeSelection() {
+    return themeOptions.find((option) => option.checked)?.value || "dark";
+  }
+
+  function syncDialogOpenState(isOpen) {
+    root.classList.toggle("is-dialog-open", isOpen);
+    document.body.classList.toggle("is-dialog-open", isOpen);
+  }
+
+  function applyUIDensity(nextDensity, { persist = true } = {}) {
+    uiDensity = normalizeUIDensity(nextDensity);
+    if (uiDensity === "current") {
+      root.removeAttribute("data-ui-density");
+    } else {
+      root.dataset.uiDensity = uiDensity;
+    }
+    if (persist) {
+      persistUIDensity();
+    }
   }
 
   function shouldRestrictAllSources() {
@@ -218,10 +271,22 @@
     });
   }
 
+  function syncDensityOptions() {
+    densityOptions.forEach((option) => {
+      option.checked = option.value === uiDensity;
+    });
+  }
+
   function currentSourceSelection() {
     return configOptions
       .filter((option) => option.checked)
       .map((option) => option.value);
+  }
+
+  function currentDensitySelection() {
+    return (
+      densityOptions.find((option) => option.checked)?.value || "current"
+    );
   }
 
   function ensureActiveFilterIsVisible() {
@@ -539,8 +604,12 @@
     renderSearch();
     cancelPendingSearch();
     searchTimer = window.setTimeout(async () => {
+      const nextQuery = currentSearchInputValue();
+      if (nextQuery.length < 2) {
+        return;
+      }
       try {
-        await applySearch(currentSearchInputValue(), {
+        await applySearch(nextQuery, {
           loadingMessage: "Searching feed…",
         });
       } catch (error) {
@@ -636,32 +705,61 @@
 
   function openConfigDialog() {
     syncConfigOptions();
+    syncDensityOptions();
+    syncThemeOptions();
     if (typeof configDialog?.showModal === "function" && !configDialog.open) {
       configDialog.showModal();
+      syncDialogOpenState(true);
       return;
     }
     if (configDialog) {
       configDialog.setAttribute("open", "open");
     }
+    syncDialogOpenState(true);
   }
 
   function closeConfigDialog() {
     if (configDialog?.open && typeof configDialog.close === "function") {
       configDialog.close();
+      syncDialogOpenState(false);
       return;
     }
     configDialog?.removeAttribute("open");
+    syncDialogOpenState(false);
   }
 
-  async function applySelectedSources(nextSources) {
-    const normalized = normalizeSelectedSources(nextSources);
-    if (normalized.length === 0) {
+  async function applyDialogSettings(nextSources, nextDensity, nextTheme) {
+    const normalizedSources = normalizeSelectedSources(nextSources);
+    if (normalizedSources.length === 0) {
       showToast("Select at least one source", "error");
       return;
     }
-    selectedSources = normalized;
+    const normalizedDensity = normalizeUIDensity(nextDensity);
+    const normalizedTheme = nextTheme === "light" ? "light" : "dark";
+    const sourcesChanged =
+      normalizedSources.length !== selectedSources.length ||
+      normalizedSources.some((value, index) => value !== selectedSources[index]);
+    const densityChanged = normalizedDensity !== uiDensity;
+    const themeChanged = normalizedTheme !== root.dataset.theme;
+
+    if (themeChanged) {
+      applyTheme(normalizedTheme);
+    }
+
+    if (densityChanged) {
+      applyUIDensity(normalizedDensity);
+    }
+
+    if (!sourcesChanged) {
+      syncDensityOptions();
+      closeConfigDialog();
+      return;
+    }
+
+    selectedSources = normalizedSources;
     persistSelectedSources();
     syncConfigOptions();
+    syncDensityOptions();
     closeConfigDialog();
     await refetchCurrentView({ loadingMessage: "Loading selected sources…" });
   }
@@ -708,9 +806,13 @@
   if (configSaveButton) {
     configSaveButton.addEventListener("click", async () => {
       try {
-        await applySelectedSources(currentSourceSelection());
+        await applyDialogSettings(
+          currentSourceSelection(),
+          currentDensitySelection(),
+          currentThemeSelection(),
+        );
       } catch (error) {
-        showToast("Failed to apply source settings", "error");
+        showToast("Failed to apply reader settings", "error");
       }
     });
   }
@@ -719,6 +821,12 @@
     configDialog.addEventListener("cancel", (event) => {
       event.preventDefault();
       closeConfigDialog();
+    });
+
+    configDialog.addEventListener("click", (event) => {
+      if (event.target === configDialog) {
+        closeConfigDialog();
+      }
     });
   }
 
@@ -843,8 +951,10 @@
 
   const savedTheme = localStorage.getItem(themeStorageKey);
   applyTheme(savedTheme === "light" ? "light" : "dark");
+  applyUIDensity(uiDensity, { persist: false });
 
   syncConfigOptions();
+  syncDensityOptions();
   applyVisitedLinkState();
   const shouldBootstrapRefetch =
     activeFilter === "all"
