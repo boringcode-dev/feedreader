@@ -52,7 +52,7 @@
   - when exactly 1 source is enabled, only that source button is shown
 - **Debounced client-side search UX** backed by the server API
 - **Explicit empty states** for no-result source filters and searches
-- **Connectivity toasts** for internet disconnect/reconnect events
+- **Connectivity indicator** that shows a no-wifi icon while offline and silently refreshes the current view when the browser reconnects
 - **Scheduled refresh** every 3 hours on wall-clock boundaries in UTC+7
 - **Manual refresh** from the UI updates the current feed list in place without a full page reload and shows a toast-based loading state while refresh + refetch are running
 - **Persisted visited-link dimming** for feed card titles across reload/reopen using local storage
@@ -146,32 +146,79 @@ Host-level implementation notes for this deployment live at:
 
 ### Prerequisites
 
-- Go 1.24+ for local builds
-- or Docker for containerized usage
+- Go 1.24+ for host-native builds
+- or Docker for containerized development/testing and image-based runs
 
-### Run locally
+### Run locally with Go
 
 ```bash
-go run ./cmd/feedreader serve --host 0.0.0.0 --port 8080
+go run ./cmd/feedreader serve --host 127.0.0.1 --port 8080
 ```
 
 Then open:
 
 - `http://127.0.0.1:8080`
 
+To keep local dev data separate from the default SQLite file:
+
+```bash
+FEEDREADER_DB_PATH="$(pwd)/tmp/feedreader-dev.db" go run ./cmd/feedreader serve --host 127.0.0.1 --port 8080
+```
+
+### Run locally with Dockerized Go
+
+Use this when you do not want to install Go on the host.
+
+```bash
+docker run --rm -p 18080:8080 -v "$PWD":/src -w /src golang:1.24-bookworm go run ./cmd/feedreader serve --host 0.0.0.0 --port 8080
+```
+
+Then open:
+
+- `http://127.0.0.1:18080`
+
+To keep containerized dev data separate from the default SQLite file:
+
+```bash
+docker run --rm -p 18080:8080 -e FEEDREADER_DB_PATH=/src/tmp/feedreader-dev.db -v "$PWD":/src -w /src golang:1.24-bookworm go run ./cmd/feedreader serve --host 0.0.0.0 --port 8080
+```
+
+### Run tests
+
+Host-native:
+
+```bash
+gofmt -w $(find . -name "*.go")
+go test ./...
+```
+
+Dockerized Go toolchain:
+
+```bash
+docker run --rm -v "$PWD":/src -w /src golang:1.24-bookworm go test ./...
+```
+
 ### Manual refresh
+
+Host-native:
 
 ```bash
 go run ./cmd/feedreader fetch
 ```
 
-### Docker build
+Dockerized Go toolchain:
+
+```bash
+docker run --rm -v "$PWD":/src -w /src golang:1.24-bookworm go run ./cmd/feedreader fetch
+```
+
+### Docker image build
 
 ```bash
 docker build -t feedreader .
 ```
 
-### Docker run
+### Docker image run
 
 ```bash
 docker run --rm -p 8080:8080 -v $(pwd)/data:/data feedreader
@@ -267,11 +314,13 @@ Presentation-layer note:
 - clicking the search icon focuses the input
 - the input renders at `16px` to avoid common iOS Safari auto-zoom behavior
 - typing is debounced before hitting the API
-- closing the search control clears the query and resets the feed
+- closing the search control clears the query and resets the feed only when an active query exists
+- closing an empty visible search box just hides the control and does not refetch `/api/items`
 
 ### Loading and empty states
 
 - first-load bootstrap queries, source filter changes, searches, `View more`, and manual refresh all show an explicit toast-based loading state
+- source-filter changes use the generic loading toast text `Loading feed…`
 - source-filter and search requests that return zero items replace the list with an empty-state message instead of leaving stale cards on screen
 - `View more` disables itself while an append request is in flight and hides itself when the current result set has no further page
 
@@ -328,6 +377,12 @@ Example local verification:
 ```bash
 gofmt -w $(find . -name "*.go")
 go test ./...
+```
+
+Example Dockerized verification:
+
+```bash
+docker run --rm -v "$PWD":/src -w /src golang:1.24-bookworm go test ./...
 ```
 
 ---
