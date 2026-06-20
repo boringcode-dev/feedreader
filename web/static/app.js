@@ -538,6 +538,22 @@
     }, searchDebounceMs);
   };
 
+  const clearSearch = async ({ collapseWhenEmpty = false } = {}) => {
+    cancelPendingSearch();
+    if (searchInput) {
+      searchInput.value = "";
+    }
+    if (!activeQuery) {
+      searchOpen = !collapseWhenEmpty;
+      renderSearch();
+      return;
+    }
+    await applySearch("", {
+      collapseWhenEmpty,
+      loadingMessage: "Loading feed…",
+    });
+  };
+
   async function refetchCurrentView({
     loadingMessage = "Loading feed…",
     showLoadingToast = true,
@@ -657,10 +673,7 @@
           query: activeQuery,
           offset: 0,
           append: false,
-          loadingMessage:
-            activeFilter === "all"
-              ? "Loading feed…"
-              : `Loading ${sourceLabels[activeFilter] || "source"}…`,
+          loadingMessage: "Loading feed…",
         });
       } catch (error) {
         showToast("Failed to load feed", "error");
@@ -721,15 +734,8 @@
         return;
       }
 
-      cancelPendingSearch();
-      if (searchInput) {
-        searchInput.value = "";
-      }
       try {
-        await applySearch("", {
-          collapseWhenEmpty: true,
-          loadingMessage: "Loading feed…",
-        });
+        await clearSearch({ collapseWhenEmpty: true });
       } catch (error) {
         showToast("Failed to clear search", "error");
       }
@@ -757,14 +763,7 @@
     searchInput.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        cancelPendingSearch();
-        if (searchInput) {
-          searchInput.value = "";
-        }
-        applySearch("", {
-          collapseWhenEmpty: true,
-          loadingMessage: "Loading feed…",
-        }).catch(() => {
+        clearSearch({ collapseWhenEmpty: true }).catch(() => {
           showToast("Failed to clear search", "error");
         });
         searchToggle?.focus();
