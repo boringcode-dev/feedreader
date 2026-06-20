@@ -16,7 +16,7 @@
     <link rel="icon" href="/favicon.svg?v=8" sizes="any" type="image/svg+xml" />
     <link rel="shortcut icon" href="/favicon.svg?v=8" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=8" />
-    <link rel="stylesheet" href="/static/style.css?v=32" />
+    <link rel="stylesheet" href="/static/style.css?v=36" />
     <script src="/static/app.js?v=28" defer></script>
   </head>
   <body>
@@ -104,21 +104,29 @@
         <section class="config-section" aria-labelledby="config-theme-title">
           <div class="config-section-header">
             <h3 id="config-theme-title" class="config-section-title">Theme</h3>
-            <p class="config-section-copy">Choose the color mode used across the reader.</p>
           </div>
-          <div class="config-options config-options--two-column">
-            <label class="config-option">
+          <div class="config-options config-options--two-column config-options--choice-grid">
+            <label class="config-option config-option--choice">
               <input type="radio" name="ui-theme" value="dark" data-theme-option checked />
-              <span class="config-option-body">
+              <span class="config-option-body config-option-body--choice">
+                <span class="config-option-icon" aria-hidden="true">
+                  <svg class="choice-icon" viewBox="0 0 24 24">
+                    <path d="M21 12.8A9 9 0 1 1 11.2 3a7.2 7.2 0 0 0 9.8 9.8Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/>
+                  </svg>
+                </span>
                 <span class="config-option-title">Dark</span>
-                <span class="config-option-copy">Use the darker reader theme.</span>
               </span>
             </label>
-            <label class="config-option">
+            <label class="config-option config-option--choice">
               <input type="radio" name="ui-theme" value="light" data-theme-option />
-              <span class="config-option-body">
+              <span class="config-option-body config-option-body--choice">
+                <span class="config-option-icon" aria-hidden="true">
+                  <svg class="choice-icon" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                    <path d="M12 2.5v2.2M12 19.3v2.2M21.5 12h-2.2M4.7 12H2.5M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6M18.7 18.7l-1.6-1.6M6.9 6.9 5.3 5.3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"/>
+                  </svg>
+                </span>
                 <span class="config-option-title">Light</span>
-                <span class="config-option-copy">Use the lighter reader theme.</span>
               </span>
             </label>
           </div>
@@ -126,21 +134,30 @@
         <section class="config-section" aria-labelledby="config-density-title">
           <div class="config-section-header">
             <h3 id="config-density-title" class="config-section-title">UI density</h3>
-            <p class="config-section-copy">Use the current spacing or fit more feed content on screen with a tighter layout.</p>
           </div>
-          <div class="config-options config-options--two-column">
-            <label class="config-option">
+          <div class="config-options config-options--two-column config-options--choice-grid">
+            <label class="config-option config-option--choice">
               <input type="radio" name="ui-density" value="current" data-density-option checked />
-              <span class="config-option-body">
+              <span class="config-option-body config-option-body--choice">
+                <span class="config-option-icon" aria-hidden="true">
+                  <svg class="choice-icon" viewBox="0 0 24 24">
+                    <path d="M5 7h14M5 12h14M5 17h14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"/>
+                    <path d="M7 5.2v3.6M17 5.2v3.6M7 10.2v3.6M17 10.2v3.6M7 15.2v3.6M17 15.2v3.6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.4" opacity="0.7"/>
+                  </svg>
+                </span>
                 <span class="config-option-title">Comfortable</span>
-                <span class="config-option-copy">Keep the existing spacing and card sizing.</span>
               </span>
             </label>
-            <label class="config-option">
+            <label class="config-option config-option--choice">
               <input type="radio" name="ui-density" value="compact" data-density-option />
-              <span class="config-option-body">
+              <span class="config-option-body config-option-body--choice">
+                <span class="config-option-icon" aria-hidden="true">
+                  <svg class="choice-icon" viewBox="0 0 24 24">
+                    <path d="M5 8h14M5 12h14M5 16h14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"/>
+                    <path d="M7 7v1.8M17 7v1.8M7 11v1.8M17 11v1.8M7 15v1.8M17 15v1.8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.2" opacity="0.55"/>
+                  </svg>
+                </span>
                 <span class="config-option-title">Compact</span>
-                <span class="config-option-copy">Reduce spacing to show more items at once.</span>
               </span>
             </label>
           </div>
