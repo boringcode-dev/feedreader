@@ -736,24 +736,14 @@
 
   async function refreshFeedList() {
     syncConnectivityState();
-    if (refreshInFlight) {
-      return false;
-    }
-    if (!browserOnline) {
+    if (!browserOnline || refreshInFlight) {
       return false;
     }
     refreshInFlight = true;
     cancelPendingSearch();
-    setFeedLoading(true, { mode: "replace", message: "Refreshing feed…" });
     setRefreshButtonLoading(true);
     renderFeedBody();
     try {
-      const response = await fetch("/api/refresh", { method: "POST" });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok || !payload.ok) {
-        showToast("Refresh completed with errors", "error");
-        return false;
-      }
       await refetchCurrentView({ loadingMessage: "Refreshing feed…" });
       showToast("Feed refreshed", "success");
       return true;
@@ -762,7 +752,6 @@
       return false;
     } finally {
       refreshInFlight = false;
-      setFeedLoading(false);
       setRefreshButtonLoading(false);
       renderFeedBody();
     }
@@ -958,7 +947,7 @@
 
   if (viewMoreButton) {
     viewMoreButton.addEventListener("click", async () => {
-      if (feedLoading || refreshInFlight) return;
+      if (feedLoading) return;
       viewMoreButton.disabled = true;
       try {
         await fetchItems({

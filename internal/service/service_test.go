@@ -199,3 +199,21 @@ func TestBuildCardsWithoutStatsStillCarriesDateParts(t *testing.T) {
 		t.Fatalf("unexpected brief: %q", *cards[0].Brief)
 	}
 }
+
+func TestNextScheduledRefreshHourlyBoundary(t *testing.T) {
+	location := time.FixedZone("UTC+7", 7*60*60)
+	now := time.Date(2026, time.June, 21, 10, 14, 35, 0, location)
+	want := time.Date(2026, time.June, 21, 11, 0, 0, 0, location)
+	if got := nextScheduledRefresh(now, 1); !got.Equal(want) {
+		t.Fatalf("nextScheduledRefresh(%v, 1) = %v, want %v", now, got, want)
+	}
+}
+
+func TestNextScheduledRefreshRespectsConfiguredInterval(t *testing.T) {
+	location := time.FixedZone("UTC+7", 7*60*60)
+	now := time.Date(2026, time.June, 21, 10, 14, 35, 0, location)
+	want := time.Date(2026, time.June, 21, 12, 0, 0, 0, location)
+	if got := nextScheduledRefresh(now, 3); !got.Equal(want) {
+		t.Fatalf("nextScheduledRefresh(%v, 3) = %v, want %v", now, got, want)
+	}
+}

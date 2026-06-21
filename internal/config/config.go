@@ -20,7 +20,7 @@ type Config struct {
 func Load() (Config, error) {
 	cfg := Config{
 		DBPath:               envOrDefault("FEEDREADER_DB_PATH", "./data/feedreader.db"),
-		RefreshIntervalHours: envInt("FEEDREADER_REFRESH_INTERVAL_HOURS", 3),
+		RefreshIntervalHours: envInt("FEEDREADER_REFRESH_INTERVAL_HOURS", 1),
 		ItemsPerSource:       envInt("FEEDREADER_ITEMS_PER_SOURCE", 20),
 		RequestTimeoutSec:    envFloat("FEEDREADER_REQUEST_TIMEOUT_SECONDS", 20),
 		UserAgent:            envOrDefault("FEEDREADER_USER_AGENT", "feedreader/0.1"),
