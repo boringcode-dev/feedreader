@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.1.0](https://github.com/boringcode-dev/feedreader/compare/v1.0.0...v1.1.0) (2026-06-21)
+
+
+### Features
+
+* refresh feeds hourly and repurpose header refresh ([#3](https://github.com/boringcode-dev/feedreader/issues/3)) ([292005d](https://github.com/boringcode-dev/feedreader/commit/292005d16aaa13468f4c78a0da3e2d999c79c6ee))
+
 ## v1.0.0 - 2026-06-21
 
 Initial public release of `feedreader`.
