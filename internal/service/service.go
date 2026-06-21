@@ -38,7 +38,7 @@ func (s *FeedService) StartScheduler(ctx context.Context) {
 		location := loadScheduleLocation()
 		for {
 			now := time.Now().In(location)
-			next := nextScheduledRefresh(now)
+			next := nextScheduledRefresh(now, s.cfg.RefreshIntervalHours)
 			wait := time.Until(next)
 			if wait < 0 {
 				wait = time.Second
@@ -436,15 +436,14 @@ func loadScheduleLocation() *time.Location {
 	return time.FixedZone("UTC+7", 7*60*60)
 }
 
-func nextScheduledRefresh(now time.Time) time.Time {
+func nextScheduledRefresh(now time.Time, intervalHours int) time.Time {
+	if intervalHours < 1 {
+		intervalHours = 1
+	}
 	location := now.Location()
 	base := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), 0, 0, 0, location)
-	nextHour := ((now.Hour() / 3) + 1) * 3
-	if nextHour >= 24 {
-		base = time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, location)
-		nextHour = 0
-	}
-	return time.Date(base.Year(), base.Month(), base.Day(), nextHour, 0, 0, 0, location)
+	hoursUntilNext := intervalHours - (now.Hour() % intervalHours)
+	return base.Add(time.Duration(hoursUntilNext) * time.Hour)
 }
 
 func fmtSprintf(format string, values ...any) string {

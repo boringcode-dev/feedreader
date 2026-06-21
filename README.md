@@ -47,7 +47,6 @@
   - RSS-based app icon/favicon branding
   - dark/light mode
   - inline expanding search
-  - refresh control
   - reader settings dialog for theme, density, and source visibility
 - **Configurable visible sources** stored in `localStorage`
   - choose which source buttons are shown
@@ -56,8 +55,7 @@
 - **Debounced client-side search UX** backed by the server API
 - **Explicit empty states** for no-result source filters and searches
 - **Connectivity indicator** that shows a no-wifi icon while offline and silently refreshes the current view when the browser reconnects
-- **Scheduled refresh** every 3 hours on wall-clock boundaries in UTC+7
-- **Manual refresh** from the UI updates the current feed list in place without a full page reload and shows a toast-based loading state while refresh + refetch are running
+- **Scheduled refresh** every 1 hour on wall-clock boundaries in UTC+7
 - **Persisted visited-link dimming** for feed card titles across reload/reopen using local storage
 - **PWA-ready assets and offline caching** including manifest, service worker, touch icons, cached shell assets, and cached `/api/items` responses for previously visited views
 - **Reconnect list refresh** re-fetches the current view from backend stored items only; it does **not** refresh upstream sources
@@ -112,7 +110,7 @@ At a high level:
 1. source adapters fetch upstream content
 2. items are upserted into SQLite by `(source, external_id)`
 3. the web app reads stored items ordered by article date descending
-4. the scheduler refreshes on 3-hour clock boundaries
+4. the scheduler refreshes on 1-hour clock boundaries by default
 
 Key properties:
 
@@ -201,7 +199,7 @@ Dockerized Go toolchain:
 docker run --rm -v "$PWD":/src -w /src golang:1.24-bookworm go test ./...
 ```
 
-### Manual refresh
+### On-demand refresh
 
 Host-native:
 
@@ -246,7 +244,7 @@ Environment variables:
 | Variable                             |                Default | Description                                                    |
 | ------------------------------------ | ---------------------: | -------------------------------------------------------------- |
 | `FEEDREADER_DB_PATH`                 | `./data/feedreader.db` | SQLite database path                                           |
-| `FEEDREADER_REFRESH_INTERVAL_HOURS`  |                    `3` | Refresh interval setting used by the scheduler                 |
+| `FEEDREADER_REFRESH_INTERVAL_HOURS`  |                    `1` | Refresh interval setting used by the scheduler                 |
 | `FEEDREADER_ITEMS_PER_SOURCE`        |                   `20` | Per-source item count used in source dashboard/health contexts |
 | `FEEDREADER_REQUEST_TIMEOUT_SECONDS` |                   `20` | Upstream request timeout                                       |
 | `FEEDREADER_USER_AGENT`              |       `feedreader/0.1` | Outbound fetch user agent                                      |
@@ -262,10 +260,10 @@ The scheduler runs **inside the app process**.
 Behavior:
 
 - aligned to **UTC+7** (`Asia/Ho_Chi_Minh`)
-- runs on the next **3-hour wall-clock boundary**
+- runs on the next **N-hour wall-clock boundary** based on `FEEDREADER_REFRESH_INTERVAL_HOURS` (default: **1 hour**)
 - does **not** perform an immediate refresh just because the container starts
 
-Manual refresh is also available through the UI and CLI.
+On-demand refresh is available through the CLI and `POST /api/refresh`.
 
 ---
 
@@ -286,6 +284,10 @@ Query params:
 - `q` — optional case-insensitive search query across title, summary, author, URL host/path, and stored metadata
 - `limit` — page size
 - `offset` — pagination offset
+
+### `POST /api/refresh`
+
+Triggers an immediate upstream refresh across all sources and returns per-source outcomes.
 
 ---
 
@@ -328,7 +330,7 @@ Presentation-layer note:
 
 ### Loading and empty states
 
-- first-load bootstrap queries, source filter changes, searches, `View more`, and manual refresh all show an explicit toast-based loading state
+- first-load bootstrap queries, source filter changes, searches, and `View more` all show an explicit toast-based loading state
 - source-filter changes use the generic loading toast text `Loading feed…`
 - source-filter and search requests that return zero items replace the list with an empty-state message instead of leaving stale cards on screen
 - `View more` disables itself while an append request is in flight and hides itself when the current result set has no further page
@@ -337,10 +339,10 @@ Presentation-layer note:
 
 - the app shell and previously fetched `GET /api/items` views are cached by the service worker for offline reuse
 - this offline/PWA behavior requires a secure-context origin where service workers are available (for example `localhost` or HTTPS); plain HTTP network IP origins such as `http://100.94.224.102:9[...]
-- when the browser goes offline, a no-wifi indicator appears before the refresh button instead of showing connectivity toasts
+- when the browser goes offline, a no-wifi indicator appears in the header action row instead of showing connectivity toasts
 - if an offline view has no cached `/api/items` response yet, the list is replaced with `Offline and no cached items are available for this view yet.`
 - when the browser comes back online, the no-wifi indicator disappears and the current view is re-fetched silently from `/api/items`
-- reconnect refreshes backend-stored items only; the only UI path that calls `POST /api/refresh` remains the manual refresh button
+- reconnect refreshes backend-stored items only; it does not trigger upstream source refetches
 
 ### Reader settings dialog
 

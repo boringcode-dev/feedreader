@@ -44,7 +44,6 @@
   const searchForm = document.querySelector("[data-search-form]");
   const searchInput = document.querySelector("[data-search-input]");
   const searchSourceInput = document.querySelector("[data-search-source]");
-  const refreshButton = document.querySelector("[data-refresh-button]");
   const themeToggle = document.querySelector("[data-theme-toggle]");
   const toast = document.querySelector("[data-toast]");
   const pageSize = Number(cardsGrid?.dataset.pageSize || 12);
@@ -69,7 +68,6 @@
   let searchTimer = null;
   let ignoreNextEmptySearchInput = false;
   let requestSequence = 0;
-  let refreshInFlight = false;
   let feedLoading = false;
   let feedLoadingMode = "";
   let activeToastKind = "";
@@ -380,7 +378,7 @@
     const showButton = hasNext && loadedCount > 0;
     const loadingMore = feedLoading && feedLoadingMode === "append";
     viewMoreButton.hidden = !showButton;
-    viewMoreButton.disabled = !showButton || refreshInFlight || feedLoading;
+    viewMoreButton.disabled = !showButton || feedLoading;
     viewMoreButton.textContent = loadingMore ? "Loading…" : "View more";
   };
 
@@ -533,20 +531,6 @@
         theme === "dark" ? "Switch to light mode" : "Switch to dark mode",
       );
     }
-  };
-
-  const setRefreshButtonLoading = (active) => {
-    if (!refreshButton) return;
-    refreshButton.disabled = active;
-    refreshButton.classList.toggle("is-loading", active);
-    refreshButton.setAttribute(
-      "aria-label",
-      active ? "Refreshing feed" : "Refresh feed",
-    );
-    refreshButton.setAttribute(
-      "title",
-      active ? "Refreshing feed" : "Refresh feed",
-    );
   };
 
   const fetchItems = async ({
@@ -720,7 +704,7 @@
 
   async function refetchCurrentViewAfterReconnect() {
     syncConnectivityState();
-    if (!browserOnline || refreshInFlight || reconnectRefetchInFlight) {
+    if (!browserOnline || reconnectRefetchInFlight) {
       return false;
     }
     reconnectRefetchInFlight = true;
@@ -731,40 +715,6 @@
       return false;
     } finally {
       reconnectRefetchInFlight = false;
-    }
-  }
-
-  async function refreshFeedList() {
-    syncConnectivityState();
-    if (refreshInFlight) {
-      return false;
-    }
-    if (!browserOnline) {
-      return false;
-    }
-    refreshInFlight = true;
-    cancelPendingSearch();
-    setFeedLoading(true, { mode: "replace", message: "Refreshing feed…" });
-    setRefreshButtonLoading(true);
-    renderFeedBody();
-    try {
-      const response = await fetch("/api/refresh", { method: "POST" });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok || !payload.ok) {
-        showToast("Refresh completed with errors", "error");
-        return false;
-      }
-      await refetchCurrentView({ loadingMessage: "Refreshing feed…" });
-      showToast("Feed refreshed", "success");
-      return true;
-    } catch (error) {
-      showToast("Refresh failed", "error");
-      return false;
-    } finally {
-      refreshInFlight = false;
-      setFeedLoading(false);
-      setRefreshButtonLoading(false);
-      renderFeedBody();
     }
   }
 
@@ -958,7 +908,7 @@
 
   if (viewMoreButton) {
     viewMoreButton.addEventListener("click", async () => {
-      if (feedLoading || refreshInFlight) return;
+      if (feedLoading) return;
       viewMoreButton.disabled = true;
       try {
         await fetchItems({
@@ -981,12 +931,6 @@
       const link = event.target.closest(".item-title a");
       if (!link) return;
       rememberVisitedLink(link.href);
-    });
-  }
-
-  if (refreshButton) {
-    refreshButton.addEventListener("click", async () => {
-      await refreshFeedList();
     });
   }
 
@@ -1030,7 +974,6 @@
   renderFilters();
   renderSearch();
   renderFeedBody();
-  setRefreshButtonLoading(false);
   renderConnectionIndicator();
 
   if (shouldBootstrapRefetch) {
