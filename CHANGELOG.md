@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.1.1](https://github.com/boringcode-dev/feedreader/compare/v1.1.0...v1.1.1) (2026-06-21)
+
+
+### Bug Fixes
+
+* specify repo in release notes workflow ([0849015](https://github.com/boringcode-dev/feedreader/commit/0849015f9715ad654c30dddb31996f38bbdd3132))
+
 ## [1.1.0](https://github.com/boringcode-dev/feedreader/compare/v1.0.0...v1.1.0) (2026-06-21)
 
 
