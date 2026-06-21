@@ -56,6 +56,7 @@
 - **Explicit empty states** for no-result source filters and searches
 - **Connectivity indicator** that shows a no-wifi icon while offline and silently refreshes the current view when the browser reconnects
 - **Scheduled refresh** every 1 hour on wall-clock boundaries in UTC+7
+- **Manual refresh** from the header re-fetches the current feed view from backend stored items only; it does **not** re-fetch upstream sources
 - **Persisted visited-link dimming** for feed card titles across reload/reopen using local storage
 - **PWA-ready assets and offline caching** including manifest, service worker, touch icons, cached shell assets, and cached `/api/items` responses for previously visited views
 - **Reconnect list refresh** re-fetches the current view from backend stored items only; it does **not** refresh upstream sources
@@ -263,7 +264,10 @@ Behavior:
 - runs on the next **N-hour wall-clock boundary** based on `FEEDREADER_REFRESH_INTERVAL_HOURS` (default: **1 hour**)
 - does **not** perform an immediate refresh just because the container starts
 
-On-demand refresh is available through the CLI and `POST /api/refresh`.
+On-demand refresh is available through:
+
+- the header refresh button for re-fetching the current backend-stored feed view
+- the CLI and `POST /api/refresh` for triggering an immediate upstream source refresh
 
 ---
 
@@ -330,7 +334,7 @@ Presentation-layer note:
 
 ### Loading and empty states
 
-- first-load bootstrap queries, source filter changes, searches, and `View more` all show an explicit toast-based loading state
+- first-load bootstrap queries, source filter changes, searches, `View more`, and header refresh all show an explicit toast-based loading state
 - source-filter changes use the generic loading toast text `Loading feed…`
 - source-filter and search requests that return zero items replace the list with an empty-state message instead of leaving stale cards on screen
 - `View more` disables itself while an append request is in flight and hides itself when the current result set has no further page

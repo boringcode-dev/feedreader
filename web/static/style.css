@@ -922,6 +922,10 @@ body.is-dialog-open {
   font-size: 0.9rem;
 }
 
+.refresh-button.is-loading .theme-icon {
+  animation: spin 0.8s linear infinite;
+}
+
 .view-more[hidden] {
   display: none;
 }

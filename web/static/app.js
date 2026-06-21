@@ -44,6 +44,7 @@
   const searchForm = document.querySelector("[data-search-form]");
   const searchInput = document.querySelector("[data-search-input]");
   const searchSourceInput = document.querySelector("[data-search-source]");
+  const refreshButton = document.querySelector("[data-refresh-button]");
   const themeToggle = document.querySelector("[data-theme-toggle]");
   const toast = document.querySelector("[data-toast]");
   const pageSize = Number(cardsGrid?.dataset.pageSize || 12);
@@ -68,6 +69,7 @@
   let searchTimer = null;
   let ignoreNextEmptySearchInput = false;
   let requestSequence = 0;
+  let refreshInFlight = false;
   let feedLoading = false;
   let feedLoadingMode = "";
   let activeToastKind = "";
@@ -378,7 +380,7 @@
     const showButton = hasNext && loadedCount > 0;
     const loadingMore = feedLoading && feedLoadingMode === "append";
     viewMoreButton.hidden = !showButton;
-    viewMoreButton.disabled = !showButton || feedLoading;
+    viewMoreButton.disabled = !showButton || refreshInFlight || feedLoading;
     viewMoreButton.textContent = loadingMore ? "Loading…" : "View more";
   };
 
@@ -531,6 +533,20 @@
         theme === "dark" ? "Switch to light mode" : "Switch to dark mode",
       );
     }
+  };
+
+  const setRefreshButtonLoading = (active) => {
+    if (!refreshButton) return;
+    refreshButton.disabled = active;
+    refreshButton.classList.toggle("is-loading", active);
+    refreshButton.setAttribute(
+      "aria-label",
+      active ? "Refreshing feed" : "Refresh feed",
+    );
+    refreshButton.setAttribute(
+      "title",
+      active ? "Refreshing feed" : "Refresh feed",
+    );
   };
 
   const fetchItems = async ({
@@ -704,7 +720,7 @@
 
   async function refetchCurrentViewAfterReconnect() {
     syncConnectivityState();
-    if (!browserOnline || reconnectRefetchInFlight) {
+    if (!browserOnline || refreshInFlight || reconnectRefetchInFlight) {
       return false;
     }
     reconnectRefetchInFlight = true;
@@ -715,6 +731,29 @@
       return false;
     } finally {
       reconnectRefetchInFlight = false;
+    }
+  }
+
+  async function refreshFeedList() {
+    syncConnectivityState();
+    if (!browserOnline || refreshInFlight) {
+      return false;
+    }
+    refreshInFlight = true;
+    cancelPendingSearch();
+    setRefreshButtonLoading(true);
+    renderFeedBody();
+    try {
+      await refetchCurrentView({ loadingMessage: "Refreshing feed…" });
+      showToast("Feed refreshed", "success");
+      return true;
+    } catch (error) {
+      showToast("Refresh failed", "error");
+      return false;
+    } finally {
+      refreshInFlight = false;
+      setRefreshButtonLoading(false);
+      renderFeedBody();
     }
   }
 
@@ -934,6 +973,12 @@
     });
   }
 
+  if (refreshButton) {
+    refreshButton.addEventListener("click", async () => {
+      await refreshFeedList();
+    });
+  }
+
   if (themeToggle) {
     themeToggle.addEventListener("click", () => {
       applyTheme(root.dataset.theme === "dark" ? "light" : "dark");
@@ -974,6 +1019,7 @@
   renderFilters();
   renderSearch();
   renderFeedBody();
+  setRefreshButtonLoading(false);
   renderConnectionIndicator();
 
   if (shouldBootstrapRefetch) {
