@@ -13,6 +13,7 @@
   <img src="https://img.shields.io/badge/SQLite-3-003B57?logo=sqlite&logoColor=white" alt="SQLite" />
   <img src="https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white" alt="Docker ready" />
   <img src="https://img.shields.io/badge/Frontend-server--rendered-111827" alt="Server rendered UI" />
+  <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" />
 </p>
 
 ---
@@ -335,7 +336,7 @@ Presentation-layer note:
 ### Offline and connectivity
 
 - the app shell and previously fetched `GET /api/items` views are cached by the service worker for offline reuse
-- this offline/PWA behavior requires a secure-context origin where service workers are available (for example `localhost` or HTTPS); plain HTTP network IP origins such as `http://100.94.224.102:9002` do not get service-worker-based offline reopen support on iOS
+- this offline/PWA behavior requires a secure-context origin where service workers are available (for example `localhost` or HTTPS); plain HTTP network IP origins such as `http://100.94.224.102:9[...]
 - when the browser goes offline, a no-wifi indicator appears before the refresh button instead of showing connectivity toasts
 - if an offline view has no cached `/api/items` response yet, the list is replaced with `Offline and no cached items are available for this view yet.`
 - when the browser comes back online, the no-wifi indicator disappears and the current view is re-fetched silently from `/api/items`
@@ -412,6 +413,18 @@ docker run --rm -v "$PWD":/src -w /src golang:1.24-bookworm go test ./...
 - CI checks `gofmt` formatting and `go test ./...`.
 - CD publishes `ghcr.io/boringcode-dev/feedreader` on `v*.*.*` tag pushes.
 - Published release images include `linux/amd64` and `linux/arm64` variants and update the `latest` tag.
+
+---
+
+## Security
+
+For security concerns, please email [hi@boringcode.dev](mailto:hi@boringcode.dev) instead of using the issue tracker. See [SECURITY.md](SECURITY.md) for more details.
+
+---
+
+## License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
 
 ---
 
