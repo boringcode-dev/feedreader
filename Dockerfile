@@ -1,10 +1,13 @@
-FROM golang:1.24-bookworm AS builder
+FROM --platform=$BUILDPLATFORM golang:1.24-bookworm AS builder
+
+ARG TARGETOS=linux
+ARG TARGETARCH
 
 WORKDIR /src
 COPY go.mod ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags='-s -w' -o /out/feedreader ./cmd/feedreader
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags='-s -w' -o /out/feedreader ./cmd/feedreader
 
 FROM gcr.io/distroless/static-debian12:nonroot
 WORKDIR /app

@@ -220,6 +220,12 @@ docker run --rm -v "$PWD":/src -w /src golang:1.24-bookworm go run ./cmd/feedrea
 docker build -t feedreader .
 ```
 
+GitHub Actions release tags also publish a multi-arch image to GHCR:
+
+```bash
+docker pull ghcr.io/boringcode-dev/feedreader:latest
+```
+
 ### Docker image run
 
 ```bash
@@ -399,6 +405,13 @@ Example Dockerized verification:
 ```bash
 docker run --rm -v "$PWD":/src -w /src golang:1.24-bookworm go test ./...
 ```
+
+## CI/CD
+
+- CI runs on pull requests and `main` pushes.
+- CI checks `gofmt` formatting and `go test ./...`.
+- CD publishes `ghcr.io/boringcode-dev/feedreader` on `v*.*.*` tag pushes.
+- Published release images include `linux/amd64` and `linux/arm64` variants and update the `latest` tag.
 
 ---
 
