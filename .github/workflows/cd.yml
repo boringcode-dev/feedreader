@@ -67,15 +67,17 @@ jobs:
       - name: Ensure GitHub release exists
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           tag="${GITHUB_REF_NAME}"
-          if ! gh release view "$tag" >/dev/null 2>&1; then
-            gh release create "$tag" --title "$tag" --generate-notes
+          if ! gh release view "$tag" --repo "$GH_REPO" >/dev/null 2>&1; then
+            gh release create "$tag" --repo "$GH_REPO" --title "$tag" --generate-notes
           fi
 
       - name: Append container image instructions to release body
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           IMAGE_REF: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         run: |
           # GITHUB_REF_NAME comes from the trusted maintainer-created tag ref that triggered this workflow.
@@ -89,7 +91,18 @@ jobs:
           marker = "## Container image"
 
           body = subprocess.check_output(
-              ["gh", "release", "view", tag, "--json", "body", "-q", ".body"],
+              [
+                  "gh",
+                  "release",
+                  "view",
+                  tag,
+                  "--repo",
+                  os.environ["GH_REPO"],
+                  "--json",
+                  "body",
+                  "-q",
+                  ".body",
+              ],
               text=True,
           )
 
@@ -115,4 +128,4 @@ jobs:
               fh.write(body)
           PY
 
-          gh release edit "$GITHUB_REF_NAME" --notes-file RELEASE_NOTES.md
+          gh release edit "$GITHUB_REF_NAME" --repo "$GH_REPO" --notes-file RELEASE_NOTES.md
