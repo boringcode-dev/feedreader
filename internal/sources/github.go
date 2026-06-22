@@ -19,11 +19,7 @@ func (GitHubTrendingSource) Label() string       { return "GitHub Trending" }
 func (GitHubTrendingSource) HomePageURL() string { return "https://github.com/trending" }
 
 func (s GitHubTrendingSource) Fetch(ctx context.Context, client *http.Client) ([]domain.FeedItem, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.HomePageURL(), nil)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := client.Do(req)
+	resp, err := getWithRetry(ctx, client, s.HomePageURL())
 	if err != nil {
 		return nil, err
 	}
