@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.1.2](https://github.com/boringcode-dev/feedreader/compare/v1.1.1...v1.1.2) (2026-06-22)
+
+
+### Bug Fixes
+
+* harden upstream feed fetching ([658d135](https://github.com/boringcode-dev/feedreader/commit/658d1350587ec582a993da950f5ce86dae33ef1a))
+* harden upstream feed fetching ([35aebed](https://github.com/boringcode-dev/feedreader/commit/35aebede313828afbff238a9c119d78ec4481533))
+
 ## [1.1.1](https://github.com/boringcode-dev/feedreader/compare/v1.1.0...v1.1.1) (2026-06-21)
 
 
