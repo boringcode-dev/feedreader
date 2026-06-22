@@ -27,10 +27,37 @@ func New(cfg config.Config, repo *repository.SQLiteRepository) *FeedService {
 		cfg:     cfg,
 		repo:    repo,
 		sources: sources.Build(),
-		client: &http.Client{
-			Timeout: time.Duration(cfg.RequestTimeoutSec * float64(time.Second)),
+		client:  newHTTPClient(cfg),
+	}
+}
+
+func newHTTPClient(cfg config.Config) *http.Client {
+	return &http.Client{
+		Timeout: time.Duration(cfg.RequestTimeoutSec * float64(time.Second)),
+		Transport: &userAgentTransport{
+			base:      http.DefaultTransport,
+			userAgent: strings.TrimSpace(cfg.UserAgent),
 		},
 	}
+}
+
+type userAgentTransport struct {
+	base      http.RoundTripper
+	userAgent string
+}
+
+func (t *userAgentTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	transport := t.base
+	if transport == nil {
+		transport = http.DefaultTransport
+	}
+	if strings.TrimSpace(t.userAgent) == "" || req.Header.Get("User-Agent") != "" {
+		return transport.RoundTrip(req)
+	}
+	clone := req.Clone(req.Context())
+	clone.Header = req.Header.Clone()
+	clone.Header.Set("User-Agent", t.userAgent)
+	return transport.RoundTrip(clone)
 }
 
 func (s *FeedService) StartScheduler(ctx context.Context) {

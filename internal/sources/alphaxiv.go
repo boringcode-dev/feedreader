@@ -21,11 +21,7 @@ func (AlphaXivSource) Label() string       { return "alphaXiv" }
 func (AlphaXivSource) HomePageURL() string { return "https://www.alphaxiv.org/" }
 
 func (s AlphaXivSource) Fetch(ctx context.Context, client *http.Client) ([]domain.FeedItem, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.HomePageURL(), nil)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := client.Do(req)
+	resp, err := getWithRetry(ctx, client, s.HomePageURL())
 	if err != nil {
 		return nil, err
 	}

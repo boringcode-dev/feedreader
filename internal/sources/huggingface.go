@@ -21,11 +21,7 @@ func (HuggingFacePapersSource) Label() string       { return "Hugging Face Paper
 func (HuggingFacePapersSource) HomePageURL() string { return "https://huggingface.co/papers/trending" }
 
 func (s HuggingFacePapersSource) Fetch(ctx context.Context, client *http.Client) ([]domain.FeedItem, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.HomePageURL(), nil)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := client.Do(req)
+	resp, err := getWithRetry(ctx, client, s.HomePageURL())
 	if err != nil {
 		return nil, err
 	}
